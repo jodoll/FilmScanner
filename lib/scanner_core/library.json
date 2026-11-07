@@ -1,0 +1,9 @@
+{
+  "name": "scanner_core",
+  "version": "0.1.0",
+  "description": "Pure logic for the film scanner",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "include"
+  }
+}
