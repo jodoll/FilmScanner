@@ -1,0 +1,107 @@
+@startuml
+' Film Scanner — wiring diagram
+' Render with: plantuml docs/wiring.puml   (produces docs/wiring.svg/png)
+' Authoritative pin map: docs/02-hardware.md §3
+'
+' The drawing is deliberately component-level: it shows which device connects
+' to which and the pin/function on each side. Ground distribution and optional
+' details are in the notes. The exact pin table is in docs/02-hardware.md.
+
+title Film Scanner — Wiring Diagram
+caption Authoritative pin map: docs/02-hardware.md §3
+
+left to right direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam defaultFontName Helvetica
+skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 70
+skinparam ArrowColor #37474F
+skinparam ArrowThickness 2
+skinparam rectangleBackgroundColor #F7F9FC
+skinparam rectangleBorderColor #243447
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #F9A825
+
+rectangle "12 V DC\n>= 2 A motor supply" as psu
+rectangle "Arduino Uno\nATmega328P, 16 MHz, 5 V" as uno
+rectangle "TMC2209 V1.3\nBTT, UART, Rsense 0.11 ohm" as tmc
+rectangle "NEMA 17 42-35\n200 steps/rev" as motor
+rectangle "Notch switch\nNO, INPUT_PULLUP" as notch
+rectangle "Control input\nmomentary NO button/cable" as control
+rectangle "Camera interface\n2x optocoupler channel" as camera
+rectangle "Common GND" as gnd
+
+' ---------------- power ----------------
+psu -[#d32f2f]-> tmc : +12 V
+uno -[#ef6c00]right-> tmc : 5 V -> VIO
+psu -[#212121]- gnd : GND
+
+' ---------------- signals ----------------
+uno -[#1565c0]right-> tmc : EN, DIR, STEP,\nPDN_UART
+notch -[#1565c0]-> uno : D3
+control -[#1565c0]-> uno : D6
+uno -[#6a1b9a]-> camera : D10 FOCUS\nD2 SHUTTER
+
+' ---------------- motor ----------------
+tmc -[#2e7d32]-> motor : A1, A2, B1, B2
+
+' ---------------- notes ----------------
+note left of psu
+  +12 V -> TMC VM
+  PSU - -> common GND
+  Arduino 5V -> TMC VIO
+  Never power the motor from 5 V.
+end note
+
+note bottom of tmc
+  Signal mapping:
+  D9 -> EN, D8 -> DIR, D7 -> STEP
+  D5 -> 1 kOhm -> PDN_UART
+  D4 -> PDN_UART (optional RX)
+  ---
+  MS1/MS2 = GND -> UART address 0
+  CLK = GND -> internal clock
+  EN is active-low
+  C1 100 uF VM-GND; C2 100 nF VIO-GND
+end note
+
+note right of gnd
+  Connect to the common GND bus:
+  - 12 V PSU -
+  - Arduino GND
+  - TMC GND (power and logic)
+  - TMC MS1, MS2, CLK
+  - notch switch GND
+  - control input GND
+  - optocoupler LED cathodes
+end note
+
+note bottom of motor
+  Do not connect or disconnect the motor
+  while VM is powered.
+end note
+
+note top of uno
+  D13 = onboard status LED
+  D0/D1 = USB serial (reserved)
+end note
+
+note top of camera
+  Per channel: output -> 1 kOhm -> opto LED anode;
+  LED cathode -> GND; phototransistor across camera contact.
+  Camera side is isolated.
+end note
+
+legend right
+  red = +12 V
+  orange = +5 V
+  black = GND
+  blue = logic signal
+  green = motor phase
+  purple = camera output
+end legend
+
+@enduml
