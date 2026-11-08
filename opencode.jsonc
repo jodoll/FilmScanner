@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permissions": [
+    // Every commit needs explicit approval; pushes are never allowed.
+    { "action": "shell", "resource": "git commit *", "effect": "ask" },
+    { "action": "shell", "resource": "git push *", "effect": "deny" }
+  ]
+}
