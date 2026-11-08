@@ -33,8 +33,10 @@ they ever differ, that document wins.
    pio test -e native -v
    ```
 
-   Confirm it fails on the expected assertion. A compile error is not red; fix
-   the test or its includes first.
+   Confirm it fails on the expected assertion. A compile error in the test — a
+   typo, a wrong type, a missing include — is not red; fix the test first. If the
+   production symbol does not exist yet, add the smallest stub that lets the test
+   build and link, then rerun and confirm the assertion itself fails.
 3. **Green.** Write the minimum production code that passes. No speculative
    methods, unused parameters or drive-by changes.
 4. **Run everything.** `pio test -e native` must be green before you continue.
@@ -74,8 +76,10 @@ TEST(StateMachineBoot, MovesFromBootToIdle) {
 ```
 
 `pio test -e native -v` fails because `result.state` is still `State::BOOT`.
-That is the expected failure. A compile error, or a failure in another
-assertion, means the test is not ready yet.
+That is the expected failure. A test compile error, or a failure in another
+assertion, means the test is not ready yet. If the production symbols do not
+exist yet, add the smallest stub first so the assertion can fail for the right
+reason.
 
 Then implement only the `BOOT` → `IDLE` transition, rerun until green, and
 refactor. A step can contain several red-green loops; each loop is one behavior.
