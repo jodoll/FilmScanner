@@ -160,28 +160,64 @@ Camera sub-phases (inside `CAMERA`): `SETTLE`, `FOCUS`, `SHUTTER`, `POST`.
 Modes: `NONE`, `RUN`, `SINGLE` (`STEP`), `SHOOT` (`SHOOT`). `JOG` is a state, not
 a mode.
 
+**Normal activity flow.**
+
+```mermaid
+stateDiagram-v2
+    direction TB
+    [*] --> BOOT
+    BOOT --> IDLE: bootCompleted()
+
+    IDLE --> SEEK: startContinuousRun() / button (mode RUN)
+    IDLE --> SEEK: scanOneFrame() (mode SINGLE)
+    IDLE --> CAMERA: shootCurrentFrame() (mode SHOOT)
+    IDLE --> JOG: jog(amount)
+
+    SEEK --> STOPPING: notchDetected()
+    STOPPING --> OFFSET: motionCompleted()
+    OFFSET --> CAMERA: motionCompleted()
+
+    CAMERA --> SEEK: pictureTaken() (RUN, no stop pending)
+    CAMERA --> IDLE: pictureTaken() (RUN with stop pending / SINGLE / SHOOT)
+    JOG --> IDLE: motionCompleted()
+
+    SEEK --> IDLE: notchTimedOut() / motionCompleted() (timeout / seek budget)
+
+    note right of CAMERA
+      Internal phases: SETTLE -> FOCUS -> SHUTTER -> POST
+    end note
 ```
-BOOT ──bootCompleted──► IDLE
 
-IDLE ──startContinuousRun / button──► SEEK        (mode RUN)
-IDLE ──scanOneFrame───────────────► SEEK        (mode SINGLE)
-IDLE ──shootCurrentFrame──────────► CAMERA      (mode SHOOT)
-IDLE ──jog────────────────────────► JOG
+**Stop, abort, fault and recovery.**
 
-SEEK ──notchDetected──────────────► STOPPING
-STOPPING ──motionCompleted────────► OFFSET
-OFFSET ──motionCompleted──────────► CAMERA
+```mermaid
+stateDiagram-v2
+    direction LR
+    SEEK --> IDLE: stop() (SINGLE) / abort()
+    STOPPING --> IDLE: stop() (SINGLE) / abort()
+    OFFSET --> IDLE: stop() (SINGLE) / abort()
+    CAMERA --> IDLE: stop() (SINGLE / SHOOT) / abort()
+    JOG --> IDLE: stop() / abort()
 
-CAMERA ──pictureTaken─────────────► SEEK        (RUN, no stop pending)
-CAMERA ──pictureTaken─────────────► IDLE        (RUN with stop pending, SINGLE, SHOOT)
-JOG ──motionCompleted─────────────► IDLE
+    FAULT --> SEEK: startContinuousRun() / button
+    FAULT --> IDLE: stop() / abort()
 
-SEEK ──notchTimedOut / motionCompleted──► IDLE
-any active ──stop (manual modes) / abort──► IDLE
-any ──driverFaultDetected─────────► FAULT
-FAULT ──startContinuousRun / button──► SEEK
-FAULT ──stop / abort──────────────► IDLE
+    note left of SEEK
+      In mode RUN, stop() only latches
+      stopRequested; the frame finishes first.
+    end note
+
+    note right of FAULT
+      driverFaultDetected() from any state
+      except FAULT enters FAULT. If a state
+      was active, emit its stop event with
+      reason=ERROR, then FAULT_RAISED.
+    end note
 ```
+
+The diagrams are an overview; the table in §6.1 is the complete, authoritative
+transition list. `CAMERA` internally steps through `SETTLE`, `FOCUS`, `SHUTTER`,
+`POST` (§6.2).
 
 ### 6.1 Events and transitions
 
