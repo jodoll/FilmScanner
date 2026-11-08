@@ -18,6 +18,12 @@ deliberately early.
   of a milestone.
 - Every new public method in `scanner_core` and every error path must have a
   direct unit test.
+- **One test case per `TEST` / `TEST_F` / `TEST_P` instance.** Use `TEST_P`
+  with `INSTANTIATE_TEST_SUITE_P` for table-driven values. Do not loop over
+  several inputs inside one test to emulate parameterization.
+- Prefer `ASSERT_*` for preconditions and single-outcome checks. Use
+  `EXPECT_*` only when one case intentionally verifies several independent
+  aspects and every failure should be reported.
 - Keep `lib/scanner_core/` free of `Arduino.h`.
 - Do not extend the prototype in `src/main.cpp`; replace it.
 - Do not inject `ConfigManager` into a component. Components take only the
@@ -55,16 +61,27 @@ build_flags =
 
 [env:native]
 platform = native
-test_framework = unity
+test_framework = googletest
 build_flags =
-    -std=gnu++11
+    -std=gnu++17
     -D UNIT_TEST
     -I lib/scanner_core/include
 ```
 
 2. Create the directory structure from
    [03-architecture.md §11](03-architecture.md#11-file-layout).
-3. Add `lib/scanner_core/library.json`:
+3. Add `test/test_native/test_main.cpp` with the GoogleTest entry point:
+
+```cpp
+#include <gtest/gtest.h>
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+```
+
+4. Add `lib/scanner_core/library.json`:
 
 ```json
 {
@@ -78,16 +95,16 @@ build_flags =
 }
 ```
 
-4. Remove the Janelia TMC2209 dependency and the old `BAUD_RATE` build flag.
-5. Delete `src/main.hpp`; it belongs to the old prototype.
-6. Leave `src/main.cpp` as a placeholder until Milestone 6; make sure the
+5. Remove the Janelia TMC2209 dependency and the old `BAUD_RATE` build flag.
+6. Delete `src/main.hpp`; it belongs to the old prototype.
+7. Leave `src/main.cpp` as a placeholder until Milestone 6; make sure the
    `native` environment does not compile it (`test_build_src` stays at its
    default `false`).
 
 ### Acceptance
 
 - `pio run -e uno` compiles (the prototype may still be there).
-- `pio test -e native` runs and reports "No tests" or a trivial passing test.
+- `pio test -e native` builds GoogleTest and runs the smoke test.
 
 ## 2. Milestone 1 — Types, config slices, interfaces, Logger
 
@@ -108,8 +125,9 @@ build_flags =
 ### Tests
 
 - Defaults validate.
-- Every writable key at min/max and out of range.
-- `microsteps` power-of-two check.
+- Every writable key at min/max and out of range, parameterized with `TEST_P`
+  so each boundary is a separately reported case.
+- `microsteps` power-of-two check, parameterized per value.
 - Cross-field check (`longPressMs > buttonDebounceMs`).
 - Each config slice round-trips through `PersistedConfig`.
 - CRC round trip, corrupt CRC, wrong magic/version/length.
@@ -119,6 +137,8 @@ build_flags =
 ### Acceptance
 
 - `pio test -e native` passes.
+- Every boundary/value table is implemented with `TEST_P`; each value is a
+  separately reported case.
 - No Arduino include in any core header.
 - `Config` is a plain aggregate of the five slices; no component interface
   mentions `ConfigManager`.
@@ -145,6 +165,7 @@ If the review feels large, split it into 2a (`NotchSensor`, `Button`) and 2b
 ### Tests
 
 - Use the tables in [09-testing.md §4.3–4.6](09-testing.md#43-notchsensor).
+  Multi-value rows are separate `TEST_P` cases, not loops.
 - Debounce and one-shot edges; live `InputConfig` changes.
 - Short press on release, long press at 2 s, boot-held behavior.
 - Camera phase timings and abort behavior, including the active shutter pulse;
@@ -372,7 +393,7 @@ Follow [08-calibration.md](08-calibration.md) completely.
 
 ## 11. Suggested commit sequence
 
-1. `build: switch to TMCStepper + AccelStepper + native tests`
+1. `build: switch to TMCStepper + AccelStepper + GoogleTest`
 2. `feat(core): types, config slices, interfaces, logger`
 3. `feat(core): notch sensor, button, camera, motion controller`
 4. `feat(core): state machine happy path`

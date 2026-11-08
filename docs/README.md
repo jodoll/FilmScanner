@@ -31,6 +31,7 @@ Architecture decision records:
 - [ADR-0003 — Configuration persistence](adr/0003-config-persistence.md)
 - [ADR-0004 — ASCII serial protocol](adr/0004-serial-protocol.md)
 - [ADR-0005 — Config slices and dependency direction](adr/0005-config-slices-and-dependency-direction.md)
+- [ADR-0006 — GoogleTest for native unit tests](adr/0006-googletest-for-native-tests.md)
 
 The top-level [AGENTS.md](../AGENTS.md) is the entry point for implementing
 agents. [README.md](../README.md) is the human overview.

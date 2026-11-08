@@ -1,6 +1,7 @@
 # ADR-0001 — Library stack
 
-- **Status:** Accepted
+- **Status:** Accepted; native test framework superseded by
+  [ADR-0006](0006-googletest-for-native-tests.md)
 - **Date:** 2026-11-07
 - **Deciders:** Project owner, firmware architect
 
@@ -22,8 +23,10 @@ Options considered:
    configuration vs. pulse generation.
 3. **TMCStepper + FastAccelStepper** — faster step generation, but more complex
    and more flash/RAM; the machine only needs 400 µsteps/s.
-4. **Unity vs. GoogleTest** — Unity is lighter and Arduino-friendly; GoogleTest
-   is heavier and unnecessary for this size.
+4. **Unity vs. GoogleTest** — Unity was initially chosen as lighter and
+   Arduino-friendly. [ADR-0006](0006-googletest-for-native-tests.md) later
+   switched to GoogleTest because Unity lacks per-case parameterization and
+   soft assertions without extra tooling. GoogleTest remains host-only.
 
 ## Decision
 
@@ -33,7 +36,9 @@ Use:
   and diagnostics.
 - **AccelStepper 1.64** (`waspinator/AccelStepper`) for STEP/DIR pulse
   generation, wrapped behind `IStepperMotor`.
-- **Unity** on PlatformIO's `native` platform for unit tests.
+- **GoogleTest** on PlatformIO's `native` platform for unit tests. This replaces
+  the original Unity choice; see
+  [ADR-0006](0006-googletest-for-native-tests.md).
 
 ## Consequences
 
@@ -57,11 +62,13 @@ Negative:
   required fallback.
 - The two libraries add flash usage; the build must be measured.
 
-## Alternatives rejected
+## Alternatives rejected at the time
 
 - **Janelia TMC2209 alone:** cannot generate steps; the offset feature is
   impossible without a second mechanism.
 - **VACTUAL velocity mode:** no position tracking, no exact stop; see ADR-0002.
 - **FastAccelStepper:** unnecessary speed for this machine, more complexity and
   resource use.
-- **GoogleTest:** heavier than needed for a 2 KB-RAM target's logic tests.
+- **GoogleTest:** rejected at the time as heavier than needed; superseded by
+  [ADR-0006](0006-googletest-for-native-tests.md) because Unity lacks
+  per-case parameterization and soft assertions without extra tooling.

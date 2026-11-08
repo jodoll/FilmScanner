@@ -19,6 +19,7 @@ Terms used throughout the documentation, in plain language.
 | **EN** | Enable pin of the TMC2209. Active-low: LOW = driver enabled. |
 | **Frame** | One negative image. |
 | **Full step** | One of the 200 magnetic positions per motor revolution (1.8°). |
+| **GoogleTest** | Host-only C++ test framework used for native unit tests. It provides `TEST`, `TEST_F`, `TEST_P`, `EXPECT_*` and `ASSERT_*`. |
 | **Graceful stop** | Finish the current frame and photo, then stop. Triggered by `STOP` or a short button press during a run. |
 | **Holder** | The carrier for a strip of four negatives. |
 | **Jog** | Manual move by a signed step count, used for setup and unjamming. No notch timeout. |
@@ -29,6 +30,7 @@ Terms used throughout the documentation, in plain language.
 | **Module (gear)** | Gear size convention. Fischertechnik uses m = 1.5 mm; pitch diameter = teeth × 1.5 mm. |
 | **Notch** | A 5 mm recess in the rack; the microswitch closes when the lever drops into it. |
 | **Offset (`offsetSteps`)** | Signed number of microsteps applied after the controlled stop to center the frame. Calibrated on the machine. |
+| **Parameterized test** | A GoogleTest `TEST_P` suite instantiated once per value with `INSTANTIATE_TEST_SUITE_P`. Every instance is a separate reported test case. |
 | **PDN_UART** | The single UART pin on the TMC2209 module. |
 | **Peak current** | The maximum coil current, √2 times the RMS value. |
 | **Rack** | The toothed strip on the holder that the Z30 drives. |
@@ -37,6 +39,7 @@ Terms used throughout the documentation, in plain language.
 | **Settle** | A short pause after motion stops so the mechanics stop vibrating before the photo. |
 | **Shutter** | The camera output that fires the exposure. |
 | **Single** | The `STEP` command: exactly one frame. |
+| **Soft assertion** | A GoogleTest `EXPECT_*` check. A failure is reported but the current test case continues. Use it only for multiple independent aspects of one behavior. |
 | **Sprocket** | The gear (Z30) that engages the rack. |
 | **StallGuard** | TMC2209 sensorless load/stall detection. Not used here; the notch switch is the reference. |
 | **StealthChop** | TMC2209 quiet voltage-mode chopper. Default on. |

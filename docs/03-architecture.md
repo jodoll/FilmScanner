@@ -683,6 +683,7 @@ src/
 
 test/
   test_native/
+    test_main.cpp
     test_config.cpp
     test_logger.cpp
     test_command_parser.cpp
@@ -764,3 +765,4 @@ After a successful `SET`, it applies `ConfigChange::DRIVER` by calling
 - [ADR-0003 — Configuration persistence](adr/0003-config-persistence.md)
 - [ADR-0004 — ASCII serial protocol](adr/0004-serial-protocol.md)
 - [ADR-0005 — Config slices and dependency direction](adr/0005-config-slices-and-dependency-direction.md)
+- [ADR-0006 — GoogleTest for native unit tests](adr/0006-googletest-for-native-tests.md)

@@ -16,7 +16,7 @@ net. Do not weaken that boundary to make a test easier.
 
 Every behavior in `lib/scanner_core/` is developed **test-first**:
 
-1. **Red:** add a small failing Unity test that states the next behavior.
+1. **Red:** add a small failing GoogleTest case that states the next behavior.
 2. Run `pio test -e native`; confirm it fails for the expected reason (not a
    compile error in the test itself).
 3. **Green:** write the minimum production code that makes it pass.
@@ -43,6 +43,22 @@ logic, no state. Anything testable is moved into the core. Their integration is
 covered by the manual hardware acceptance checklist in §8. Do not skip a unit
 test by putting logic in an adapter "because it is easier there".
 
+### 1.2 One test case per test
+
+Every test case must run and report independently:
+
+- One `TEST`, `TEST_F` or `TEST_P` instance = one test case.
+- One behavior per test case. Do not combine unrelated behaviors.
+- Do not loop over several inputs inside one test to emulate parameterization.
+  Use `TEST_P` with `INSTANTIATE_TEST_SUITE_P`; each value is a separate case.
+- Multiple `EXPECT_*` assertions are allowed only for one coherent behavior
+  with several independent aspects. They are assertions, not separate cases.
+- Prefer `ASSERT_*` for preconditions and single-outcome checks. Use
+  `EXPECT_*` only when the case intentionally checks several independent facts
+  and all failures should be reported.
+- A failed `ASSERT_*` aborts only the current test case; the remaining
+  parameterized instances still run.
+
 ## 2. Native test environment
 
 `platformio.ini`:
@@ -50,12 +66,16 @@ test by putting logic in an adapter "because it is easier there".
 ```ini
 [env:native]
 platform = native
-test_framework = unity
+test_framework = googletest
 build_flags =
-    -std=gnu++11
+    -std=gnu++17
     -D UNIT_TEST
     -I lib/scanner_core/include
 ```
+
+The native environment uses `gnu++17` because current GoogleTest requires it.
+The core sources remain C++11-compatible; only the host test build selects the
+newer standard. The Uno environment stays on `gnu++11`.
 
 Command:
 
@@ -67,9 +87,46 @@ Rules:
 
 - Tests live in `test/test_native/`.
 - Fakes live in `test/fakes/`.
+- `test_main.cpp` provides the only `main()`:
+  `InitGoogleTest` followed by `RUN_ALL_TESTS`.
+- Include `<gtest/gtest.h>` in every test file; do not define `main()` there.
 - No `delay()`, `sleep()`, or real time. Use `FakeClock`.
-- One behavior per test; name it after the behavior.
+- One test case per `TEST` / `TEST_F` / `TEST_P` instance.
+- `TEST_F` when a fixture provides shared setup; plain `TEST` otherwise.
+- Use `TEST_P` for table-driven input; `INSTANTIATE_TEST_SUITE_P` creates one
+  separately reported case per value.
+- Prefer `ASSERT_*` for preconditions and single-outcome checks. Use
+  `EXPECT_*` only for multiple independent aspects of one behavior.
 - A failing test must point at the reason, not just "assert failed".
+
+### 2.1 Test shape
+
+```cpp
+#include <gtest/gtest.h>
+
+TEST(ConfigValidation, RejectsOutOfRangeSeekSpeed) {
+  Config config = defaultConfig();
+  config.motion.seekSpeed = 49;
+
+  ASSERT_EQ(validateConfig(config), ErrorCode::VALUE_OUT_OF_RANGE);
+}
+
+class SeekSpeedBoundary
+    : public ::testing::TestWithParam<uint16_t> {};
+
+TEST_P(SeekSpeedBoundary, AcceptsBoundary) {
+  Config config = defaultConfig();
+  config.motion.seekSpeed = GetParam();
+
+  ASSERT_EQ(validateConfig(config), ErrorCode::NONE);
+}
+
+INSTANTIATE_TEST_SUITE_P(MinMax, SeekSpeedBoundary,
+                         ::testing::Values(50, 2000));
+```
+
+`pio test -e native -v` reports `MinMax/SeekSpeedBoundary.AcceptsBoundary/0`
+and `/1` separately. If `/0` fails, `/1` still runs.
 
 ## 3. Fakes
 
@@ -107,24 +164,34 @@ For tests that need the state machine to advance through a move, call
 
 ## 4. Test cases
 
+### 4.0 How to read the tables
+
+- Each row is one test case unless it explicitly says otherwise.
+- A cell with several values (`1, 2, 4, ...`) means a `TEST_P` suite with one
+  reported instance per value, not a loop inside one test.
+- Rows marked `(N cases)` produce N separately reported test cases.
+- Use `TEST_F` when the cases share fixture setup; use `TEST` for a single case
+  with no shared setup.
+- The tables are the minimum list. Add a test case for every new behavior.
+
 ### 4.1 `Config`
 
 | Test | Given | When | Then |
 |---|---|---|---|
-| defaults valid | — | `defaultConfig()` + `validate` | `NONE` |
-| microsteps valid set | — | 1, 2, 4, 8, 16, 32, 64 | `NONE` |
-| microsteps invalid | — | 3, 100, 128 | `VALUE_OUT_OF_RANGE` |
-| current bounds | — | 100, 2000 | `NONE` |
-| current out of range | — | 99, 2001 | error |
-| hold percent bounds | — | 0, 100 | `NONE` |
-| seek speed bounds | — | 50, 2000 | `NONE` |
-| acceleration bounds | — | 100, 20000 | `NONE` |
-| offset bounds | — | −5000, 5000 | `NONE` |
-| timeout bounds | — | 1000, 60000 | `NONE` |
+| defaults valid | — | `validateConfig(defaultConfig())` | `NONE` |
+| microsteps valid set (7 cases) | — | 1, 2, 4, 8, 16, 32, 64 | `NONE` |
+| microsteps invalid (3 cases) | — | 3, 100, 128 | `VALUE_OUT_OF_RANGE` |
+| current bounds (2 cases) | — | 100, 2000 | `NONE` |
+| current out of range (2 cases) | — | 99, 2001 | error |
+| hold percent bounds (2 cases) | — | 0, 100 | `NONE` |
+| seek speed bounds (2 cases) | — | 50, 2000 | `NONE` |
+| acceleration bounds (2 cases) | — | 100, 20000 | `NONE` |
+| offset bounds (2 cases) | — | −5000, 5000 | `NONE` |
+| timeout bounds (2 cases) | — | 1000, 60000 | `NONE` |
 | long press > debounce | debounce 100, long 500 | validate | `NONE` |
 | long press <= debounce | debounce 100, long 50 | validate | error |
 | maxSeekSteps 0 | — | validate | `NONE` |
-| maxSeekSteps 1..99 | — | validate | error |
+| maxSeekSteps 1..99 (3 cases: 1, 50, 99) | — | validate | error |
 | slice round trip | non-default values in all five slices | serialize/deserialize | equal |
 | packed size | — | `sizeof(PersistedConfig)` | 47 |
 | CRC round trip | config | serialize/deserialize | equal |
@@ -339,7 +406,10 @@ complexity). The test list above is the checklist.
 ## 7. Debugging native tests
 
 - Run one test file: `pio test -e native -f test_state_machine`.
-- Add `-v` for verbose output.
+- Filter one GoogleTest case or suite:
+  `pio test -e native --program-arg=--gtest_filter='ConfigValidation.*'`.
+- Add `-v` for verbose output; it shows each GoogleTest case, including every
+  `TEST_P` instance.
 - If a test hangs, check for a loop without `FakeClock::advance`.
 - If a fake is wrong, fix the fake, not the production code.
 

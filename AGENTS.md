@@ -49,7 +49,7 @@ the docs and the decision records in `docs/adr/`.
 3. **Motor:** Artillery 42-35 NEMA 17 (200 full steps/rev).
 4. **Libraries:** `teemuatlut/TMCStepper@0.7.3` for TMC2209 configuration,
    `waspinator/AccelStepper@1.64` for STEP/DIR pulse generation,
-   Unity for native unit tests.
+   GoogleTest for native unit tests.
 5. **STEP/DIR, never `VACTUAL`.** The TMCStepper library configures the driver
    only; AccelStepper generates the pulses. `VACTUAL` has no position tracking
    and cannot stop at an exact offset.
@@ -123,7 +123,7 @@ There is no CI workflow; run the commands locally.
 │   ├── main.cpp               ← composition root
 │   └── hal/                   ← Arduino implementations of the interfaces
 └── test/
-    ├── test_native/           ← Unity tests + fakes
+    ├── test_native/           ← GoogleTest tests + fakes
     └── ...
 ```
 
@@ -138,6 +138,11 @@ There is no CI workflow; run the commands locally.
   `scanner_core`; every public method and every error path needs a direct unit
   test. Do not batch tests at the end. HAL/Arduino integration is covered by the
   manual hardware acceptance checklist, not by host unit tests.
+- **One test case per `TEST` / `TEST_F` / `TEST_P` instance.** Use `TEST_P` with
+  `INSTANTIATE_TEST_SUITE_P` for table-driven values; never loop over several
+  inputs inside one test. Prefer `ASSERT_*` for preconditions and
+  single-outcome checks; use `EXPECT_*` only for multiple independent aspects
+  of one behavior.
 - Every public class has a single responsibility and is testable with fakes.
 - **Depend on the narrowest type.** Do not pass a manager or facade when a value
   or small config struct is enough. Components must not include
@@ -193,6 +198,9 @@ Full rules: [docs/04-code-style.md](docs/04-code-style.md).
   `MotionController` or `ScannerController`.** Pass `config.input`,
   `config.camera`, `config.motion` or `config.run`. Only `main.cpp` and
   `CommandHandler` know `ConfigManager`.
+- **Do not hide test cases in a loop.** A `TEST` with `for (value : values)` is
+  one reported case and stops at the first fatal failure. Use `TEST_P` so every
+  value is its own case.
 
 ---
 

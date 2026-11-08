@@ -44,10 +44,12 @@ Clean Code is a guide, not a religion. On an ATmega328P:
 
 ### 2.1 C++ on the Arduino Uno: the language, not the standard library
 
-The Arduino toolchain compiles C++ with `avr-g++`. `platformio.ini` selects
-`-std=gnu++11`, and `-fno-exceptions -fno-rtti` are set explicitly. C++ classes,
-namespaces, `enum class`, single inheritance, virtual interfaces and `constexpr`
-all work and cost little. What does **not** fit is the C++ **standard library**,
+The Arduino toolchain compiles C++ with `avr-g++`. The `uno` environment
+selects `-std=gnu++11`, and `-fno-exceptions -fno-rtti` are set explicitly. The
+native test environment uses `gnu++17` because GoogleTest requires it; the core
+sources themselves stay C++11-compatible. C++ classes, namespaces,
+`enum class`, single inheritance, virtual interfaces and `constexpr` all work
+and cost little. What does **not** fit is the C++ **standard library**,
 not the language.
 
 | Used | Not used |
@@ -152,7 +154,7 @@ Rules:
   assumptions simple.
 - `FAULT` is for conditions that require operator attention; `NOTCH_TIMEOUT` is
   a normal end-of-film condition, not a fault.
-- No `assert()` in production; tests may use Unity assertions.
+- No `assert()` in production; tests use GoogleTest assertions.
 
 ## 7. Logging
 
@@ -179,8 +181,15 @@ Rules:
 - Every public method in `scanner_core` has at least one direct unit test.
 - Every branch, guard, boundary and error code has a test.
 - Acceptance/hardware tests never replace unit tests.
-- One behavior per test; name it after the behavior:
-  `test_short_press_starts_run_from_idle`.
+- **One test case per `TEST` / `TEST_F` / `TEST_P` instance.** Name it after
+  the behavior: `TEST(Button, ShortPressStartsRunFromIdle)`.
+- Use `TEST_P` + `INSTANTIATE_TEST_SUITE_P` for table-driven values. Do not
+  loop over several inputs inside one test to emulate parameterization.
+- Prefer `ASSERT_*` for preconditions and single-outcome checks. Use
+  `EXPECT_*` only when one case intentionally checks several independent
+  aspects and every failure should be reported.
+- Multiple `EXPECT_*` assertions for one coherent behavior are fine; unrelated
+  behaviors belong in separate test cases.
 - Structure: arrange / act / assert.
 - Use a `FakeClock`; never `delay()` or `sleep()` in tests.
 - Use fakes for every interface; no Arduino in native tests.
