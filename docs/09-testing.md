@@ -225,9 +225,9 @@ complexity without changing the outcome.
 
 ## 7. Debugging native tests
 
-- Run one test file: `pio test -e native -f test_state_machine`.
-- Filter one GoogleTest case or suite:
+- Filter one GoogleTest suite or case:
   `pio test -e native --program-arg=--gtest_filter='ConfigValidation.*'`.
+  PlatformIO's `-f` selects test suites; this project has one, `test_native`.
 - Add `-v` for verbose output; it shows each GoogleTest case, including every
   `TEST_P` instance.
 - If a test hangs, check for a loop without `FakeClock::advance`.
