@@ -18,12 +18,9 @@ deliberately early.
   of a milestone.
 - Every new public method in `scanner_core` and every error path must have a
   direct unit test.
-- **One test case per `TEST` / `TEST_F` / `TEST_P` instance.** Use `TEST_P`
-  with `INSTANTIATE_TEST_SUITE_P` for table-driven values. Do not loop over
-  several inputs inside one test to emulate parameterization.
-- Prefer `ASSERT_*` for preconditions and single-outcome checks. Use
-  `EXPECT_*` only when one case intentionally verifies several independent
-  aspects and every failure should be reported.
+- Test conventions (one case per `TEST`/`TEST_F`/`TEST_P`, parameterized values,
+  assertion choice) are defined in
+  [09-testing.md §1](09-testing.md#1-strategy). Do not restate or vary them.
 - Keep `lib/scanner_core/` free of `Arduino.h`.
 - Do not extend the prototype in `src/main.cpp`; replace it.
 - Do not inject `ConfigManager` into a component. Components take only the
@@ -35,71 +32,25 @@ deliberately early.
 
 ### Tasks
 
-1. Replace `platformio.ini` with:
-
-```ini
-[platformio]
-default_envs = uno
-
-[env:uno]
-platform = atmelavr
-board = uno
-framework = arduino
-monitor_speed = 115200
-lib_deps =
-    teemuatlut/TMCStepper@0.7.3
-    waspinator/AccelStepper@1.64
-build_flags =
-    -D VERSION=\"0.1.0\"
-    -D PROTOCOL_VERSION=1
-    -D LOG_LEVEL=2
-    -std=gnu++11
-    -fno-exceptions
-    -fno-rtti
-    -Wall
-    -Wextra
-
-[env:native]
-platform = native
-test_framework = googletest
-build_flags =
-    -std=gnu++17
-    -D UNIT_TEST
-    -I lib/scanner_core/include
-```
-
-2. Create the directory structure from
+1. Update `platformio.ini` to two environments:
+   - `uno`: ATmega328P/Uno with the Arduino framework, 115200 monitor, and
+     library dependencies `teemuatlut/TMCStepper@0.7.3` and
+     `waspinator/AccelStepper@1.64`. Build as C++11 with exceptions and RTTI
+     disabled, `-Wall -Wextra`, and defines for firmware version, protocol
+     version and default log level.
+   - `native`: PlatformIO's `native` platform with GoogleTest, the
+     `lib/scanner_core/include` include path, and no `src/` sources. The host
+     test build may use C++17; core sources stay C++11-compatible.
+2. Remove the Janelia TMC2209 dependency and the obsolete `BAUD_RATE` flag.
+3. Create the directory structure from
    [03-architecture.md §11](03-architecture.md#11-file-layout).
-3. Add `test/test_native/test_main.cpp` with the GoogleTest entry point:
-
-```cpp
-#include <gtest/gtest.h>
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
-```
-
-4. Add `lib/scanner_core/library.json`:
-
-```json
-{
-  "name": "scanner_core",
-  "version": "0.1.0",
-  "description": "Pure logic for the film scanner",
-  "build": {
-    "srcDir": "src",
-    "includeDir": "include"
-  }
-}
-```
-
-5. Remove the Janelia TMC2209 dependency and the old `BAUD_RATE` build flag.
+4. Add a PlatformIO library manifest for `scanner_core` pointing at
+   `include/` and `src/`.
+5. Provide the single GoogleTest entry point in `test/test_native/`:
+   `InitGoogleTest` followed by `RUN_ALL_TESTS`.
 6. Delete `src/main.hpp`; it belongs to the old prototype.
 7. Leave `src/main.cpp` as a placeholder until Milestone 6; make sure the
-   `native` environment does not compile it (`test_build_src` stays at its
-   default `false`).
+   `native` environment does not compile it.
 
 ### Acceptance
 
@@ -115,30 +66,23 @@ int main(int argc, char** argv) {
 - `Config.h/.cpp` — `InputConfig`, `CameraConfig`, `MotionConfig`, `RunConfig`,
   `DriverConfig`, the aggregate `Config`, defaults, ranges, validation,
   `PersistedConfig`, CRC16-CCITT.
-- `IClock.h`, `IInput.h`, `IOutput.h`, `IStepperMotor.h`, `ITmcDriver.h`,
-  `IConfigStore.h`, `ILogSink.h`, `IEventSink.h`, `IStatusSink.h`.
-- `Logger.h/.cpp` — level filtering, fixed 96-byte formatting.
-- `test/fakes/FakeClock.h`, `FakeInput.h`, `FakeOutput.h`,
-  `RecordingLogSink.h`, `RecordingEventSink.h`, `RecordingStatusSink.h`.
-- `test/test_native/test_config.cpp`, `test_logger.cpp`.
+- The core interfaces from [03-architecture.md §4](03-architecture.md#4-interfaces).
+- `Logger.h/.cpp` — level filtering, fixed-buffer formatting.
+- Fakes for clock, input, output and the recording sinks; tests for config and
+  logger.
 
 ### Tests
 
-- Defaults validate.
-- Every writable key at min/max and out of range, parameterized with `TEST_P`
-  so each boundary is a separately reported case.
-- `microsteps` power-of-two check, parameterized per value.
-- Cross-field check (`longPressMs > buttonDebounceMs`).
-- Each config slice round-trips through `PersistedConfig`.
-- CRC round trip, corrupt CRC, wrong magic/version/length.
-- Derived values (`stepsPerMm`, `expectedFrameSteps`).
+- Config defaults and every range boundary.
+- `microsteps` allowed values and rejection of anything else.
+- Cross-field validation.
+- Persistence round-trip, CRC, and corrupt or mismatched header data.
+- Derived values used by the rest of the system.
 - Logger level filtering and buffer truncation.
 
 ### Acceptance
 
 - `pio test -e native` passes.
-- Every boundary/value table is implemented with `TEST_P`; each value is a
-  separately reported case.
 - No Arduino include in any core header.
 - `Config` is a plain aggregate of the five slices; no component interface
   mentions `ConfigManager`.
@@ -157,22 +101,20 @@ If the review feels large, split it into 2a (`NotchSensor`, `Button`) and 2b
 - `Button.h/.cpp` — `IInput&`, `const InputConfig&`.
 - `Camera.h/.cpp` — two `IOutput&`, `const CameraConfig&`.
 - `MotionController.h/.cpp` — `IStepperMotor&`, `const MotionConfig&`.
-- `test_native/test_notch_sensor.cpp`, `test_button.cpp`, `test_camera.cpp`,
-  `test_motion_controller.cpp`.
-- `FakeStepperMotor.h`, `SimulatedStepperMotor.h`, `FakeCameraOutputs.h`,
-  `FakeInput` enhancements.
+- Fakes for the stepper motor, simulated motion, camera outputs, and input
+  behavior; one test file per collaborator.
 
 ### Tests
 
-- Use the tables in [09-testing.md §4.3–4.6](09-testing.md#43-notchsensor).
-  Multi-value rows are separate `TEST_P` cases, not loops.
-- Debounce and one-shot edges; live `InputConfig` changes.
-- Short press on release, long press at 2 s, boot-held behavior.
-- Camera phase timings and abort behavior, including the active shutter pulse;
-  live `CameraConfig` changes.
-- Motion pass-through, poll, stop/halt, enable/disable, position, live
+Cover the behavior defined in [03-architecture.md §7.1–7.4](03-architecture.md#71-notchsensor):
+
+- Debounce and one-shot edges, and live `InputConfig` changes.
+- Short press on release, long press, boot-held input.
+- Camera phase order and timing, abort in each phase, and the active shutter
+  pulse; live `CameraConfig` changes.
+- Motion pass-through, poll, stop/halt, enable/disable, position; live
   `MotionConfig` changes.
-- Timing test: 38 mm at 400 µsteps/s and 2,000 µsteps/s² ≈ 3.43 s.
+- Simulated frame motion at the default speed and acceleration.
 
 ### Acceptance
 
@@ -189,14 +131,13 @@ abort, timeout, fault, button and event edge cases for Milestone 4.
 ### Files
 
 - `ScannerController.h/.cpp`.
-- `test_native/test_state_machine.cpp` (happy-path tests first).
-- Extend fakes as needed (`FakeTmcDriver`, `RecordingEventSink` helpers).
+- The state-machine test file (happy-path tests first).
+- Extend fakes as needed.
 
 ### Tests
 
-Use the table in [09-testing.md §4.9](09-testing.md#49-scannercontroller--state-machine)
-and the transition table in
-[03-architecture.md §6.1](03-architecture.md#61-transitions). Cover at least:
+Follow the transition table in
+[03-architecture.md §6.1](03-architecture.md#61-transitions) and cover:
 
 - Start from IDLE and FAULT; busy otherwise.
 - Seek → notch → align → camera → next seek.
@@ -221,13 +162,13 @@ transition and every stop reason.
 ### Files
 
 - `ScannerController.h/.cpp` (continued).
-- `test_native/test_state_machine.cpp` (edge cases).
+- The state-machine test file (edge cases).
 - Extend fakes as needed.
 
 ### Tests
 
-Use the same table in [09-testing.md §4.9](09-testing.md#49-scannercontroller--state-machine)
-and cover at least:
+Use the same transition table in
+[03-architecture.md §6.1](03-architecture.md#61-transitions) and cover:
 
 - Graceful stop during RUN (frame completes).
 - Immediate stop during SINGLE, JOG and SHOOT.
@@ -255,21 +196,19 @@ other way round.
 
 - `CommandParser.h/.cpp`.
 - `ConfigManager.h/.cpp`.
-- `FakeConfigStore.h`.
-- `test_native/test_command_parser.cpp`, `test_config_manager.cpp`.
+- A fake config store, and one test file per class.
 
 ### Tests
 
-- Parser: use the table in
-  [09-testing.md §4.2](09-testing.md#42-commandparser).
-  Case-insensitivity, whitespace, CRLF, overflow, extra args.
+- Parser grammar: case-insensitivity, whitespace, CRLF, overflow, argument
+  count, overlong lines, and unknown commands. See
+  [05-serial-protocol.md](05-serial-protocol.md).
 - `ConfigManager`: load valid/empty/corrupt, `get`/`set` by key, read-only,
   unknown, out of range.
 - `SET` returns the right `ConfigSetResult` (`error`; `change` is `DRIVER`,
   `LOG_LEVEL` or `NONE`).
 - `save`, `reset`; reset mutates the existing `Config` in place.
 - Microsteps change logs the offset warning.
-- No component receives `ConfigManager`.
 
 ### Acceptance
 
@@ -284,58 +223,34 @@ other way round.
 
 ### Files
 
-- `StatusLed.h/.cpp`; `test_native/test_status_led.cpp`.
-- `src/hal/ArduinoClock.h/.cpp`.
-- `src/hal/ArduinoInput.h/.cpp` (active-low, `INPUT_PULLUP`).
-- `src/hal/ArduinoOutput.h/.cpp`.
-- `src/hal/AccelStepperMotor.h/.cpp` (STEP/DIR, EN active-low).
-- `src/hal/TmcStepperDriver.h/.cpp` (TMCStepper 0.7.3, SoftwareSerial).
-- `src/hal/EepromConfigStore.h/.cpp` (packed struct + CRC).
-- `src/hal/SerialLogSink.h/.cpp`.
-- `src/hal/SerialEventSink.h/.cpp` (8-entry FIFO + `flush()`).
-- `src/hal/SerialStatusSink.h/.cpp`.
-- `src/hal/SerialCommandHandler.h/.cpp` (line assembly, parser dispatch,
-  `ConfigChange` apply).
+- `StatusLed.h/.cpp`; a test file for it.
+- `src/hal/`: `ArduinoClock`, `ArduinoInput` (active-low, `INPUT_PULLUP`),
+  `ArduinoOutput`, `AccelStepperMotor` (STEP/DIR, EN active-low),
+  `TmcStepperDriver` (TMCStepper 0.7.3, SoftwareSerial), `EepromConfigStore`
+  (packed struct + CRC), `SerialLogSink`, `SerialEventSink`,
+  `SerialStatusSink`, and `SerialCommandHandler`.
 - `src/main.cpp` composition root.
 
 ### Adapter rules
 
-- `AccelStepperMotor`:
-  - Construct `AccelStepper(AccelStepper::DRIVER, stepPin, dirPin)`.
-  - `enable()` → `digitalWrite(EN, LOW)`, `disable()` → `HIGH`.
-  - `run()` → `stepper.run()` only when enabled.
-  - `halt()` → `stepper.setSpeed(0)` / stop issuing pulses.
-- `TmcStepperDriver`:
-  - `TMC2209Stepper driver(&softSerial, 0.11, 0)`.
-  - `begin()`: `driver.begin()`, `test_connection()`.
-  - `apply(const DriverConfig&)`: the register sequence in
-    [07-stepper-tmc2209-guide.md §10.4](07-stepper-tmc2209-guide.md#104-what-the-firmware-writes).
-  - `hasFault()`: `driver.driver_error()` if readback, else false.
-- `EepromConfigStore`:
-  - Use `EEPROM.get/put` with the packed struct.
-  - CRC16-CCITT.
-  - Verify readback on save.
-- `SerialLogSink`:
-  - `LOG <LEVEL> <message>\n`.
-  - Drop the message if `Serial.availableForWrite()` is below the line length.
-- `SerialEventSink`:
-  - Format `EVT` lines exactly as in
-    [05-serial-protocol.md §5](05-serial-protocol.md#5-events).
-  - Buffer events in an 8-entry FIFO; `flush()` writes them in order.
-  - `loop()` calls `flush()` after `controller.tick()` and before
-    `commandHandler.poll()`, so a command response is written before the events
-    it caused (see [03-architecture.md §9.1](03-architecture.md#91-responseevent-ordering)).
-- `SerialStatusSink`:
-  - Print one `STATUS` line from a `StatusSnapshot`, no trailing `OK STATUS`.
-  - The explicit `STATUS` command calls `write(snapshot())` and then prints
-    `OK STATUS`, reusing the formatter.
-- `SerialCommandHandler`:
-  - Read one byte per loop.
-  - Max 63 characters; discard overlong lines.
-  - Dispatch and print `OK`/`ERR`/`CFG`/`STATUS`.
-  - Apply `ConfigChange::DRIVER` via `tmc.apply(config.driver)` and
-    `ConfigChange::LOG_LEVEL` via `logger.setLevel(config.logLevel)`.
-  - Never flush the event FIFO itself; the main loop owns that.
+- `AccelStepperMotor` owns STEP/DIR pulse generation and drives `EN`
+  active-low. It issues no pulses while disabled.
+- `TmcStepperDriver` configures the driver only. The register sequence is in
+  [07-stepper-tmc2209-guide.md §10.4](07-stepper-tmc2209-guide.md#104-what-the-firmware-writes).
+  It reports a fault only when UART readback is available.
+- `EepromConfigStore` stores the packed struct with CRC16-CCITT and verifies the
+  readback after a save.
+- `SerialLogSink` writes `LOG <LEVEL> <message>` and drops a message rather than
+  block when the transmit buffer is too full.
+- `SerialEventSink` buffers events in a small FIFO and writes `EVT` lines in the
+  order defined by [05-serial-protocol.md §5](05-serial-protocol.md#5-events).
+  The main loop flushes it so a command response precedes the events it caused
+  (see [03-architecture.md §9.1](03-architecture.md#91-responseevent-ordering)).
+- `SerialStatusSink` prints one `STATUS` line from a `StatusSnapshot`. The
+  explicit `STATUS` command reuses that formatter and then prints `OK STATUS`.
+- `SerialCommandHandler` reads one byte per loop, enforces the 63-character line
+  limit, prints `OK`/`ERR`/`CFG`/`STATUS`, and applies `ConfigChange::DRIVER` and
+  `ConfigChange::LOG_LEVEL`. It never flushes the event FIFO itself.
 
 ### Acceptance
 

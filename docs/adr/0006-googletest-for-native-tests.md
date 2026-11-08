@@ -37,32 +37,21 @@ Options considered:
 
 ## Decision
 
-Use **GoogleTest** for native unit tests:
+Use **GoogleTest** for native unit tests, run through PlatformIO's `native`
+platform. The exact environment definition is implementation and belongs in
+`platformio.ini`, not in this record.
 
-```ini
-[env:native]
-platform = native
-test_framework = googletest
-build_flags =
-    -std=gnu++17
-    -D UNIT_TEST
-    -I lib/scanner_core/include
-```
+Rules specific to this decision:
 
-Rules:
-
-- One `TEST`, `TEST_F` or `TEST_P` instance is one test case.
-- Use `TEST_P` with `INSTANTIATE_TEST_SUITE_P` for table-driven values. Each
-  generated instance is reported separately.
-- Do not loop over multiple inputs inside one test to emulate parameterization.
-- Prefer `ASSERT_*` for preconditions and single-outcome checks.
-- Use `EXPECT_*` only when one case intentionally verifies several independent
-  aspects and all failures should be reported.
 - GoogleTest is host-only. It is not part of the Uno build and has no flash or
   RAM impact on the target.
 - The native environment uses `gnu++17` because current GoogleTest requires it.
   The core sources remain C++11-compatible; only the host test build selects the
   newer standard.
+- Test-writing conventions (one case per `TEST`/`TEST_F`/`TEST_P`, parameterized
+  values, assertion choice) live in
+  [09-testing.md §1](../09-testing.md#1-strategy). This record does not restate
+  them.
 
 ## Consequences
 

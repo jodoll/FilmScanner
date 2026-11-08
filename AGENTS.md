@@ -153,11 +153,10 @@ pipelines:
   `scanner_core`; every public method and every error path needs a direct unit
   test. Do not batch tests at the end. HAL/Arduino integration is covered by the
   manual hardware acceptance checklist, not by host unit tests.
-- **One test case per `TEST` / `TEST_F` / `TEST_P` instance.** Use `TEST_P` with
-  `INSTANTIATE_TEST_SUITE_P` for table-driven values; never loop over several
-  inputs inside one test. Prefer `ASSERT_*` for preconditions and
-  single-outcome checks; use `EXPECT_*` only for multiple independent aspects
-  of one behavior.
+- **Test conventions** (one case per `TEST`/`TEST_F`/`TEST_P`, parameterized
+  values, assertion choice, fakes) are defined in
+  [docs/09-testing.md §1](docs/09-testing.md#1-strategy). Follow that document;
+  do not invent a local variant.
 - Every public class has a single responsibility and is testable with fakes.
 - **Depend on the narrowest type.** Do not pass a manager or facade when a value
   or small config struct is enough. Components must not include
@@ -215,7 +214,8 @@ Full rules: [docs/04-code-style.md](docs/04-code-style.md).
   `CommandHandler` know `ConfigManager`.
 - **Do not hide test cases in a loop.** A `TEST` with `for (value : values)` is
   one reported case and stops at the first fatal failure. Use `TEST_P` so every
-  value is its own case.
+  value is its own case (see
+  [docs/09-testing.md §1.2](docs/09-testing.md#12-one-test-case-per-test)).
 
 ---
 

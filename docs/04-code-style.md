@@ -180,24 +180,17 @@ Rules:
   the minimum production code (green), then refactor with the test still green.
 - Every public method in `scanner_core` has at least one direct unit test.
 - Every branch, guard, boundary and error code has a test.
-- Acceptance/hardware tests never replace unit tests.
-- **One test case per `TEST` / `TEST_F` / `TEST_P` instance.** Name it after
-  the behavior: `TEST(Button, ShortPressStartsRunFromIdle)`.
-- Use `TEST_P` + `INSTANTIATE_TEST_SUITE_P` for table-driven values. Do not
-  loop over several inputs inside one test to emulate parameterization.
-- Prefer `ASSERT_*` for preconditions and single-outcome checks. Use
-  `EXPECT_*` only when one case intentionally checks several independent
-  aspects and every failure should be reported.
-- Multiple `EXPECT_*` assertions for one coherent behavior are fine; unrelated
-  behaviors belong in separate test cases.
-- Structure: arrange / act / assert.
-- Use a `FakeClock`; never `delay()` or `sleep()` in tests.
-- Use fakes for every interface; no Arduino in native tests.
 - Test the happy path, boundary values, and every error path.
+- Structure: arrange / act / assert.
 - F.I.R.S.T.: fast, independent, repeatable, self-validating, timely.
 - A bug fix starts with a failing test.
+- Acceptance/hardware tests never replace unit tests.
 - The Arduino HAL adapters are kept thin and are covered by the hardware
   acceptance checklist, not by host unit tests.
+
+The full test conventions — one case per `TEST`/`TEST_F`/`TEST_P`, parameterized
+values, assertion choice, fakes, and the required coverage — live in
+[09-testing.md §1](09-testing.md#1-strategy). Do not restate them here.
 
 ## 10. Formatting
 

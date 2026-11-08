@@ -682,30 +682,8 @@ src/
     SerialCommandHandler.h/.cpp
 
 test/
-  test_native/
-    test_main.cpp
-    test_config.cpp
-    test_logger.cpp
-    test_command_parser.cpp
-    test_notch_sensor.cpp
-    test_button.cpp
-    test_camera.cpp
-    test_motion_controller.cpp
-    test_config_manager.cpp
-    test_state_machine.cpp
-    test_status_led.cpp
-  fakes/
-    FakeClock.h
-    FakeInput.h
-    FakeOutput.h
-    FakeStepperMotor.h
-    SimulatedStepperMotor.h
-    FakeTmcDriver.h
-    FakeConfigStore.h
-    FakeCameraOutputs.h
-    RecordingLogSink.h
-    RecordingEventSink.h
-    RecordingStatusSink.h
+  test_native/       ← one test file per core class, plus test_main.cpp
+  fakes/             ← one fake per core interface
 ```
 
 ## 12. Composition root
