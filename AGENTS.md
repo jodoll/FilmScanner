@@ -12,13 +12,20 @@ tested firmware. Read this file first, then follow the read order below.
 
 ## Status
 
-- The specification is complete. No production firmware exists yet.
-- `src/main.cpp` and `src/main.hpp` are an early prototype from the first
-  attempt. **Replace them.** Do not extend them.
-- `platformio.ini` still references the prototype library. Update it as
-  specified in [docs/11-implementation-plan.md](docs/11-implementation-plan.md).
-- Documentation is the source of truth. If code and docs disagree, the docs win
+- The specification is complete. No production firmware exists yet. The
+  declarations in `lib/scanner_core/include/scanner_core/` are in place as the
+  contract: interfaces, vocabulary and config slices, with no logic.
+- `src/main.cpp` is an early prototype from the first attempt. **Replace it.** Do
+  not extend it.
+- `platformio.ini` is up to date: TMCStepper, AccelStepper, and a `native` test
+  environment.
+- **Documentation is the source of truth for behavior.** The wire format, the
+  config keys and ranges, the persistence layout and the acceptance criteria are
+  defined in `docs/`. If code and docs disagree about behavior, the docs win
   until the docs are deliberately updated.
+- **The headers are the source of truth for declarations.** Signatures, struct
+  fields and enum members live in `lib/scanner_core/include/scanner_core/`. Do
+  not copy them into the docs; change them freely while the tests pass.
 
 ---
 
@@ -41,9 +48,12 @@ Use [docs/12-glossary.md](docs/12-glossary.md) when a term is unclear.
 
 ## Documentation changes
 
-The docs are the source of truth, and they are changed deliberately.
+The docs are the source of truth for behavior and the host contract, and they are
+changed deliberately.
 
 - Do not edit anything under `docs/` or this file without explicit approval.
+- Do not paste interfaces, structs or enums into `docs/`. Link to the header
+  instead. The docs state behavior, names, ownership and requirements.
 - If a rule, name or behavior is missing, ambiguous, or contradicts the code,
   stop and report:
   1. the exact gap or contradiction,
@@ -145,10 +155,10 @@ There is no CI workflow; run the commands locally.
 .
 ├── AGENTS.md                  ← you are here
 ├── README.md                  ← human overview
-├── platformio.ini             ← build environments (to be updated)
+├── platformio.ini             ← build environments
 ├── scripts/
 │   └── check_docs.py          ← documentation reference checker
-├── docs/                      ← the specification (source of truth)
+├── docs/                      ← the specification (behavior source of truth)
 │   ├── adr/                   ← architecture decision records
 │   └── ...
 ├── lib/
@@ -263,6 +273,10 @@ Full rules: [docs/04-code-style.md](docs/04-code-style.md).
   commands go through the controller to the motion interface.
 - **`SET` already applied the change.** `ConfigManager::set` pushes the new value
   before it returns; `CommandHandler` must not re-apply it.
+- **Do not copy declarations into the docs.** Signatures, struct fields and enum
+  members live in the headers under `lib/scanner_core/include/`. If the docs and
+  a header disagree about a declaration, the header wins; if they disagree about
+  behavior, the docs win.
 - **There is no `ALIGN` state.** The stop and the offset are `STOPPING` and
   `OFFSET`.
 - **Do not hide test cases in a loop.** A `TEST` with `for (value : values)` is

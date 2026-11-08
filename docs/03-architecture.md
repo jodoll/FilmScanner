@@ -17,7 +17,7 @@
 │  main.cpp            composition root                        │
 │  hal/                ArduinoClock, ArduinoInput,             │
 │                      ArduinoOutput, AccelStepperMotor,       │
-│                      TmcStepperDriver, EepromConfigStore,    │
+│                      TmcStepperDriver, EepromStore,          │
 │                      SerialLogSink, SerialEventSink,         │
 │                      SerialStatusSink, SerialCommandHandler  │
 └───────────────────────────┬──────────────────────────────────┘
@@ -28,11 +28,12 @@
 │  ScannerController  (orchestrator: entry/exit, timing,       │
 │                      counters, protocol events)              │
 │  IMotionController, StepperMotionController                  │
-│  NotchSensor, Button, Camera                                 │
-│  Config, ConfigManager, Logger, StatusLed, CommandParser     │
+│  NotchSensor, Button, Camera, StatusLed                      │
+│  Config, ConfigRecord, ConfigManager, Logger, CommandParser  │
 │  interfaces: IClock, IInput, IOutput, IStepperMotor,         │
-│              IMotionController, ITmcDriver, IConfigStore,    │
-│              ILogSink, IEventSink, IStatusSink               │
+│              IMotionController, ITmcDriver,                  │
+│              INonVolatileStore, ILogSink, IEventSink,        │
+│              IStatusSink                                     │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -57,7 +58,8 @@ Within the core:
 |---|---|
 | `StateMachine` | Pure activity state machine: states, modes, one method per event, `Result` with error, stop reason and announcements. Defines `State`, `Mode`, `StopReason`, `Announcement`, `ErrorCode`. No hardware, clock, config or protocol types |
 | `Types` | Protocol vocabulary: `CameraPhase`, `ButtonEvent`, `EventType`, `Event`, `StatusSnapshot`, and `toString` helpers |
-| `Config` | Slice headers owned by their consumers, the aggregate `Config`, defaults, ranges, validation, `PersistedConfig`, CRC16-CCITT |
+| `Config` | The aggregate `Config` of consumer-owned slices, defaults, ranges and validation |
+| `ConfigRecord` | The persisted wire format: its own flat fields, header and checksum, plus the mapping to and from `Config` |
 | `ConfigManager` | Own the aggregate `Config`; load/save/reset, `get`/`set` by key, validation, persistence, and explicit `applyConfig` pushes into the consumers. Depends on the consumers; they never depend on it |
 | `NotchSensor` | Debounce the notch input, expose stable state and one-shot edges; owns `NotchConfig` |
 | `Button` | Debounce the control input, classify short/long press, handle boot-held contact; owns `ButtonConfig` |
@@ -73,297 +75,78 @@ Within the core:
 
 ## 4. Interfaces
 
-Exact signatures. All interfaces have a virtual destructor. All methods are
-`noexcept` in spirit (no exceptions are used).
+The declarations live in `lib/scanner_core/include/scanner_core/`. This section
+pins what each seam is for and the rules that a signature cannot express.
 
-```cpp
-// IClock.h
-class IClock {
-public:
-  virtual ~IClock() = default;
-  virtual uint32_t nowMs() const = 0;
-};
+| Interface | Implemented by | Responsibility |
+|---|---|---|
+| `IClock` | `ArduinoClock` | Monotonic milliseconds |
+| `IInput` | `ArduinoInput` | Active-low digital input |
+| `IOutput` | `ArduinoOutput` | Digital output |
+| `IStepperMotor` | `AccelStepperMotor` | STEP/DIR pulses, enable, position |
+| `IMotionController` | `StepperMotionController` | Motion in activities; owns units, speeds and the enable policy |
+| `ITmcDriver` | `TmcStepperDriver` | TMC2209 registers and diagnostics; never generates steps |
+| `INonVolatileStore` | `EepromStore` | Read and write the record bytes at address 0 |
+| `ILogSink` | `SerialLogSink` | One log line |
+| `IEventSink` | `SerialEventSink` | One protocol event |
+| `IStatusSink` | `SerialStatusSink` | One `STATUS` line |
 
-// IInput.h — true means "active" (the pin reads LOW)
-class IInput {
-public:
-  virtual ~IInput() = default;
-  virtual bool read() const = 0;
-};
+Rules that belong to the seams rather than to a caller:
 
-// IOutput.h
-class IOutput {
-public:
-  virtual ~IOutput() = default;
-  virtual void write(bool active) = 0;
-};
+- `IInput::read()` returns true for the *active* level, so no caller sees
+  polarity. The HAL applies `INPUT_PULLUP` and inverts.
+- `ITmcDriver::hasFault()` returns false when UART readback is unavailable. The
+  firmware then relies on the notch timeout instead of the fault line.
+- `INonVolatileStore` is a byte block at address 0. It knows nothing about
+  `Config` or `ConfigRecord`; the record's header and checksum are validated
+  above it, in the core.
+- `IMotionController::halt()` is used only for `ABORT`, timeouts and faults. At
+  the default 400 µsteps/s it is mechanically safe; `stop()` is the normal
+  deceleration path.
+- `IMotionController` owns enable, microsteps and offset units. Nothing above it
+  mentions a pin, a pulse or a step rate.
+- `IStatusSink` is used for `STATUS` only, both explicit and periodic.
 
-// IStepperMotor.h
-class IStepperMotor {
-public:
-  virtual ~IStepperMotor() = default;
-  virtual void enable() = 0;
-  virtual void disable() = 0;
-  virtual bool isEnabled() const = 0;
-  virtual void setMaxSpeed(uint16_t stepsPerSecond) = 0;
-  virtual void setAcceleration(uint16_t stepsPerSecond2) = 0;
-  virtual void moveTo(int32_t absolutePosition) = 0;
-  virtual void moveBy(int32_t steps) = 0;
-  virtual void run() = 0;       // generate pulses as needed
-  virtual void stop() = 0;      // decelerate to rest
-  virtual void halt() = 0;      // stop issuing pulses immediately
-  virtual int32_t position() const = 0;
-  virtual bool isRunning() const = 0;
-};
+`Types.h` includes `StateMachine.h` for the shared vocabulary; the state machine
+never includes `Types.h`. `StatusSnapshot` carries exactly the fields of the
+`STATUS` line, so the two cannot drift apart.
 
-// IMotionController.h — activity-level motion, no hardware detail
-class IMotionController {
-public:
-  virtual ~IMotionController() = default;
-  virtual void startSeek() = 0;
-  virtual void applyOffset() = 0;
-  virtual void startJog(int32_t amount) = 0;
-  virtual void stop() = 0;          // controlled deceleration
-  virtual void halt() = 0;          // immediate
-  virtual void idle() = 0;          // inactive; may de-energize
-  virtual void enable() = 0;        // maintenance override
-  virtual void disable() = 0;
-  virtual void applyConfig(const MotionConfig& config) = 0;
-  virtual void poll() = 0;          // generate pulses as needed
-  virtual bool isMoving() const = 0;
-  virtual bool isEnabled() const = 0;
-  virtual int32_t position() const = 0;
-};
+## 5. Vocabulary and config slices
 
-// ITmcDriver.h — configuration/diagnostics only
-class ITmcDriver {
-public:
-  virtual ~ITmcDriver() = default;
-  virtual bool begin() = 0;                  // true if UART readback works
-  virtual void applyConfig(const DriverConfig& config) = 0;
-  virtual bool testConnection() = 0;
-  virtual bool hasFault() = 0;               // false when readback unavailable
-};
+The wire vocabulary is defined once, in the protocol document:
+[05-serial-protocol.md §4.4](05-serial-protocol.md#44-status) for the `STATUS`
+field values, [§5](05-serial-protocol.md#5-events) for the event names and
+`reason` values, and [§7](05-serial-protocol.md#7-error-codes) for the error
+codes. The C++ declarations live in `StateMachine.h` and `Types.h`; they are not
+repeated here.
 
-// IConfigStore.h
-class IConfigStore {
-public:
-  virtual ~IConfigStore() = default;
-  virtual bool load(Config& out) = 0;        // false = empty/invalid
-  virtual bool save(const Config& in) = 0;
-  virtual void clear() = 0;
-};
+`StateMachine.h` owns `State`, `Mode`, `StopReason`, `ErrorCode`, `Announcement`
+and `Result`. `Types.h` owns `CameraPhase`, `ButtonEvent`, `EventType`, `Event`,
+`StatusSnapshot` and the `toString` helpers that produce the wire names.
 
-// ILogSink.h
-class ILogSink {
-public:
-  virtual ~ILogSink() = default;
-  virtual void write(uint8_t level, const char* message) = 0;
-};
+`Announcement` is internal: it never reaches the host, so its members are not
+part of the specification. The protocol events are named in
+[05-serial-protocol.md §5](05-serial-protocol.md#5-events); `Announcement` is the
+bitmask that carries the same facts from the machine to the orchestrator.
 
-// IEventSink.h
-class IEventSink {
-public:
-  virtual ~IEventSink() = default;
-  virtual void emit(const Event& event) = 0;
-};
+Configuration is split into one slice per consumer, defined next to it:
 
-// IStatusSink.h — used for periodic STATUS lines only
-class IStatusSink {
-public:
-  virtual ~IStatusSink() = default;
-  virtual void write(const StatusSnapshot& status) = 0;
-};
-```
+| Slice | Consumer | Keys |
+|---|---|---|
+| `NotchConfig` | `NotchSensor` | `notchDebounceMs` |
+| `ButtonConfig` | `Button` | `buttonDebounceMs`, `longPressMs` |
+| `CameraConfig` | `Camera` | `settleMs`, `focusMs`, `shutterMs`, `postShotMs` |
+| `MotionConfig` | `IMotionController` | `seekSpeed`, `acceleration`, `jogSpeed`, `offsetSteps`, `maxSeekSteps` |
+| `RunConfig` | `ScannerController` | `notchTimeoutMs`, `statusPeriodMs` |
+| `DriverConfig` | `ITmcDriver` | `microsteps`, `runCurrentMa`, `holdCurrentPercent`, `stealthChop` |
+| `LogConfig` | `Logger` | `logLevel` |
 
-`Types.h` includes `StateMachine.h` for `State`, `Mode`, `StopReason`,
-`Announcement` and `ErrorCode`; the state machine never includes `Types.h`.
-
-`StatusSnapshot` (in `Types.h`) carries exactly the fields of the `STATUS`
-line: `state`, `mode`, `stopRequested`, `motorEnabled`, `camera`, `pos`,
-`frames`, `runFrames`, `lastError`, `uptimeMs`. The explicit `STATUS` command
-and the periodic status both use it.
-
-`IMotionController::halt()` is used only for `ABORT`, timeouts and faults. At the
-default 400 µsteps/s it is mechanically safe. `stop()` is the normal
-deceleration path. `IStepperMotor` remains the STEP/DIR-level interface; only
-`StepperMotionController` and the HAL know about enable polarity and pulses.
-
-## 5. Types
-
-`StateMachine.h` owns the whole state-machine vocabulary. It includes no
-project header.
-
-```cpp
-enum class State : uint8_t {
-  BOOT, IDLE, SEEK, STOPPING, OFFSET, CAMERA, JOG, FAULT
-};
-
-enum class Mode : uint8_t {
-  NONE, RUN, SINGLE, SHOOT
-};
-
-enum class StopReason : uint8_t {
-  NONE, REQUEST, ABORT, NOTCH_TIMEOUT, MOTION_TIMEOUT, ERROR
-};
-
-enum class ErrorCode : uint8_t {
-  NONE,
-  BAD_COMMAND,
-  UNKNOWN_KEY,
-  READ_ONLY,
-  VALUE_OUT_OF_RANGE,
-  BUSY,
-  NOTCH_TIMEOUT,
-  MOTION_TIMEOUT,
-  DRIVER_FAULT,
-  DRIVER_UART,
-  EEPROM_INVALID,
-  CONFIG_INVALID,
-  INTERNAL
-};
-
-// Semantic facts, not actions. The orchestrator maps them to protocol Events.
-enum class Announcement : uint16_t {
-  NONE          = 0,
-  NOTCH         = 1u << 0,
-  RUN_STARTED   = 1u << 1,
-  FRAME_STARTED = 1u << 2,
-  FRAME_DONE    = 1u << 3,
-  RUN_STOPPED   = 1u << 4,
-  STEP_DONE     = 1u << 5,
-  STEP_STOPPED  = 1u << 6,
-  STEP_FAILED   = 1u << 7,
-  JOG_DONE      = 1u << 8,
-  JOG_STOPPED   = 1u << 9,
-  SHOT_DONE     = 1u << 10,
-  SHOT_STOPPED  = 1u << 11,
-  FAULT_RAISED  = 1u << 12
-};
-
-struct Result {
-  State      state;
-  ErrorCode  error;          // NONE if accepted
-  StopReason reason;         // NONE unless this transition stopped something
-  uint16_t   announcements;  // bitmask of Announcement
-};
-```
-
-`Types.h` includes `StateMachine.h` and defines the protocol vocabulary:
-
-```cpp
-enum class CameraPhase : uint8_t {
-  IDLE, SETTLE, FOCUS, SHUTTER, POST, DONE
-};
-
-enum class ButtonEvent : uint8_t { NONE, SHORT_PRESS, LONG_PRESS };
-
-enum class EventType : uint8_t {
-  READY,
-  RUN_STARTED,
-  RUN_STOPPED,
-  FRAME_STARTED,
-  FRAME_DONE,
-  NOTCH,
-  JOG_DONE,
-  JOG_STOPPED,
-  STEP_DONE,
-  STEP_FAILED,
-  STEP_STOPPED,
-  SHOT_DONE,
-  SHOT_STOPPED,
-  FAULT,
-  CONFIG_SAVED,
-  CONFIG_RESET,
-  MOTOR_STATE
-};
-
-struct Event {
-  EventType type;
-  uint8_t code;        // ErrorCode / StopReason / bool
-  int32_t value;       // frame index, position, or steps
-  int32_t value2;      // second value if needed
-};
-
-struct StatusSnapshot {
-  State state;
-  Mode mode;
-  bool stopRequested;
-  bool motorEnabled;
-  CameraPhase camera;
-  int32_t pos;
-  uint32_t frames;      // total since boot
-  uint32_t runFrames;   // current/last run
-  ErrorCode lastError;
-  uint32_t uptimeMs;
-};
-```
-
-Configuration slices are defined next to their single consumer. `Config.h`
-includes the slice headers and defines the aggregate.
-
-```cpp
-// NotchConfig.h
-struct NotchConfig {
-  uint16_t debounceMs;
-};
-
-// ButtonConfig.h
-struct ButtonConfig {
-  uint16_t debounceMs;
-  uint16_t longPressMs;
-};
-
-// CameraConfig.h
-struct CameraConfig {
-  uint16_t settleMs;
-  uint16_t focusMs;
-  uint16_t shutterMs;
-  uint16_t postShotMs;
-};
-
-// MotionConfig.h — units belong to the motion layer
-struct MotionConfig {
-  uint16_t seekSpeed;
-  uint16_t acceleration;
-  uint16_t jogSpeed;
-  int32_t  offsetSteps;
-  uint32_t maxSeekSteps;
-};
-
-// RunConfig.h — controller timing and reporting
-struct RunConfig {
-  uint16_t notchTimeoutMs;
-  uint16_t statusPeriodMs;
-};
-
-// DriverConfig.h
-struct DriverConfig {
-  uint16_t microsteps;
-  uint16_t runCurrentMa;
-  uint8_t  holdCurrentPercent;
-  uint8_t  stealthChop;
-};
-
-// LogConfig.h
-struct LogConfig {
-  uint8_t level;
-};
-
-// Config.h — the aggregate owned by ConfigManager
-struct Config {
-  NotchConfig  notch;
-  ButtonConfig button;
-  CameraConfig camera;
-  MotionConfig motion;
-  RunConfig    run;
-  DriverConfig driver;
-  LogConfig    log;
-};
-```
-
-There is no `ConfigChange` or `ConfigSetResult`. `ConfigManager::set()` returns
-`ErrorCode`; the push into the consumer is the application.
+`Config` is the aggregate that `ConfigManager` owns. The persisted record is a
+separate representation in `ConfigRecord.h`, mapped to and from the aggregate by
+`ConfigManager`; the docs specify its behaviour, not its layout
+([ADR-0010](adr/0010-persistence-record-is-a-separate-representation.md)).
+`ConfigManager::set()` returns `ErrorCode`: there is no change descriptor,
+because the push into the consumer *is* the application.
 
 ## 6. State machine
 
@@ -571,13 +354,13 @@ method. The `StatusLed` is driven separately by `main` with `state()`.
 
 ### 7.1 `NotchSensor`
 
-- Defines `NotchConfig { uint16_t debounceMs; }` and owns it by value.
-- Constructor: `NotchSensor(IInput& input)`.
-- `applyConfig(const NotchConfig&)` stores the values and restarts the debounce
+- Owns `NotchConfig` by value.
+- Takes the notch input (`IInput&`).
+- `applyConfig` stores the `NotchConfig` values and restarts the debounce
   window from the current raw level; changing the config never generates an
   event.
 - Samples `IInput` each `update()`.
-- Active = pin LOW.
+- Active = `IInput::read()` returns true; polarity belongs to the HAL.
 - Debounce: the raw value must be stable for `debounceMs` before it becomes the
   stable state.
 - `consumeClosedEvent()` returns true once per open→closed transition.
@@ -588,13 +371,12 @@ method. The `StatusLed` is driven separately by `main` with `state()`.
 
 ### 7.2 `Button`
 
-- Defines `ButtonConfig { uint16_t debounceMs; uint16_t longPressMs; }` and owns
-  it by value.
-- Constructor: `Button(IInput& input)`.
-- `applyConfig(const ButtonConfig&)` stores the values; they apply to the next
+- Owns `ButtonConfig` by value.
+- Takes the control input (`IInput&`).
+- `applyConfig` stores the `ButtonConfig` values; they apply to the next
   update. `SET` is only allowed in `IDLE`, so no press is in progress.
 - Samples `IInput` each `update()`.
-- Active = pin LOW.
+- Active = `IInput::read()` returns true; polarity belongs to the HAL.
 - If the input is active at `begin()`, enter `IgnoreUntilRelease`: no press is
   recognized until the input has been inactive for the debounce time.
 - On a debounced press, record `pressStart`.
@@ -606,9 +388,9 @@ method. The `StatusLed` is driven separately by `main` with `state()`.
 
 ### 7.3 `Camera`
 
-- Defines `CameraConfig` and owns it by value.
-- Constructor: `Camera(IOutput& focus, IOutput& shutter)`.
-- `applyConfig(const CameraConfig&)` stores the timings for the next sequence;
+- Owns `CameraConfig` by value.
+- Takes the focus and shutter outputs (`IOutput&` each).
+- `applyConfig` stores the `CameraConfig` timings for the next sequence;
   it never changes the active one.
 - Owns `CameraPhase`.
 - `start(now)`: phase `SETTLE`, deadline `now + settleMs`.
@@ -640,23 +422,10 @@ method. The `StatusLed` is driven separately by `main` with `state()`.
 
 ### 7.5 `IMotionController` and `StepperMotionController`
 
-`IMotionController` is the activity-level seam:
-
-```cpp
-virtual void startSeek() = 0;
-virtual void applyOffset() = 0;
-virtual void startJog(int32_t amount) = 0;
-virtual void stop() = 0;
-virtual void halt() = 0;
-virtual void idle() = 0;
-virtual void enable() = 0;
-virtual void disable() = 0;
-virtual void applyConfig(const MotionConfig& config) = 0;
-virtual void poll() = 0;
-virtual bool isMoving() const = 0;
-virtual bool isEnabled() const = 0;
-virtual int32_t position() const = 0;
-```
+`IMotionController` is the activity-level seam (declared in
+`IMotionController.h`): start a seek, apply the offset, start a jog, stop
+gracefully, halt immediately, become idle, and the maintenance enable/disable
+override.
 
 `StepperMotionController` implements it with `IStepperMotor` and owns
 `MotionConfig` by value:
@@ -684,12 +453,12 @@ See [ADR-0009](adr/0009-motion-controller-interface.md).
 
 - Owns a `StateMachine` by value, `RunConfig` by value, `frames`, `runFrames`,
   the pending jog amount, the seek deadline and the previous state.
-- Constructor: `ScannerController(NotchSensor&, Button&, IMotionController&,
-  Camera&, ITmcDriver&, IClock&, IEventSink&, IStatusSink&, ILogSink&)`.
+- Constructed with its collaborators by reference: notch sensor, button, motion
+  controller, camera, TMC driver, clock, event sink, status sink and log sink.
   `RunConfig` starts from defaults.
 - `begin(now)` calls `bootCompleted()`, runs the entry action for `IDLE`
   (`motion.idle()`), and initializes the status deadline.
-- `applyConfig(const RunConfig&)` stores the values for the next seek and status
+- `applyConfig` stores the `RunConfig` values for the next seek and status
   check.
 - `tick(now)`:
   1. `notch.update()`, `button.update()`;
@@ -720,17 +489,19 @@ See [ADR-0009](adr/0009-motion-controller-interface.md).
 ### 7.7 `ConfigManager`
 
 - Owns exactly one aggregate `Config` for the lifetime of the program.
-- Constructor takes `IConfigStore&` and references to the consumers it pushes
-  into: `NotchSensor&`, `Button&`, `Camera&`, `IMotionController&`,
+- Constructor takes `INonVolatileStore&` and references to the consumers it
+  pushes into: `NotchSensor&`, `Button&`, `Camera&`, `IMotionController&`,
   `ScannerController&`, `ITmcDriver&`, `Logger&`.
-- `begin()` loads from `IConfigStore` into the aggregate, validates it, then
-  calls `applyConfig` on every consumer once. On failure it loads defaults, logs
-  a warning, and pushes those.
+- `begin()` reads the record bytes from the store, validates the header, maps the
+  fields into the aggregate, validates the values, then calls `applyConfig` on
+  every consumer once. On any failure it loads defaults, logs a warning, and
+  pushes those.
 - `set(key, int32_t value)` validates, mutates the aggregate, and pushes the
   owning slice. It returns `ErrorCode`; there is no change descriptor. A
   rejected set changes nothing and pushes nothing.
 - `get(key, int32_t& value)` returns `UNKNOWN_KEY` or `READ_ONLY`.
-- `save()` writes the aggregate to EEPROM and returns `ErrorCode`.
+- `save()` builds a record from the aggregate, writes it as a whole, verifies the
+  read-back, and returns `ErrorCode`.
 - `reset()` writes defaults into the aggregate, pushes all slices, saves, and
   returns `ErrorCode`.
 - `config()` returns `const Config&`.
@@ -753,21 +524,9 @@ See [ADR-0009](adr/0009-motion-controller-interface.md).
 
 ### 7.9 `CommandParser`
 
-Pure function, no Arduino:
-
-```cpp
-struct Command {
-  enum class Type : uint8_t { NONE, START, STOP, ABORT, STATUS, CONFIG, GET,
-                              SET, SAVE, RESET_CONFIG, JOG, STEP, SHOOT,
-                              ENABLE, DISABLE, VERSION, HELP, PING };
-  Type type;
-  char key[24];
-  int32_t value;
-  bool hasValue;
-};
-
-ErrorCode parseCommand(const char* line, Command& out);
-```
+Pure function, no Arduino. `Command` carries the parsed command type, an optional
+key and an optional integer; the vocabulary and its arguments are the ones in
+[05-serial-protocol.md §3](05-serial-protocol.md#3-command-summary).
 
 - Case-insensitive command and key names (stored lowercase).
 - Whitespace separated; leading/trailing whitespace ignored; multiple spaces
@@ -857,7 +616,8 @@ core:
 Rules to stay within budget:
 
 - No `std::`, no `String`, no `new`/`malloc`.
-- Fixed buffers only: log line 96 bytes, command line 64 bytes, config 47 bytes.
+- Fixed buffers only: log line 96 bytes, command line 64 bytes, config aggregate
+  about 40 bytes.
 - `F()` for constant strings in the HAL.
 - Keep `snprintf` use in the logger; avoid `printf` in hot paths.
 - Check `pio run -e uno` output for the actual flash/RAM usage.
@@ -880,13 +640,14 @@ lib/scanner_core/
     LogConfig.h
     ConfigManager.h
     CommandParser.h
+    ConfigRecord.h
     IClock.h
     IInput.h
     IOutput.h
     IStepperMotor.h
     IMotionController.h
     ITmcDriver.h
-    IConfigStore.h
+    INonVolatileStore.h
     ILogSink.h
     IEventSink.h
     IStatusSink.h
@@ -901,6 +662,7 @@ lib/scanner_core/
     StateMachine.cpp
     Types.cpp
     Config.cpp
+    ConfigRecord.cpp
     ConfigManager.cpp
     CommandParser.cpp
     Logger.cpp
@@ -919,7 +681,7 @@ src/
     ArduinoOutput.h/.cpp
     AccelStepperMotor.h/.cpp
     TmcStepperDriver.h/.cpp
-    EepromConfigStore.h/.cpp
+    EepromStore.h/.cpp
     SerialLogSink.h/.cpp
     SerialEventSink.h/.cpp
     SerialStatusSink.h/.cpp
@@ -936,7 +698,7 @@ test/
 
 1. Creates `ArduinoClock`, inputs, outputs.
 2. Creates `AccelStepperMotor` (STEP/DIR/EN), `TmcStepperDriver`.
-3. Creates `EepromConfigStore`, `SerialLogSink`, `SerialEventSink`,
+3. Creates `EepromStore`, `SerialLogSink`, `SerialEventSink`,
    `SerialStatusSink`.
 4. Creates `Logger`, `NotchSensor`, `Button`, `StepperMotionController`,
    `Camera` and `ScannerController`. Each starts with defaults and owns its
@@ -1003,3 +765,4 @@ allowed to use Arduino types. It reads one byte per loop, assembles lines, calls
 - [ADR-0007 — Config ownership and push](adr/0007-config-ownership-and-push.md)
 - [ADR-0008 — Pure activity state machine and orchestrator](adr/0008-pure-state-machine-and-orchestrator.md)
 - [ADR-0009 — Motion controller interface](adr/0009-motion-controller-interface.md)
+- [ADR-0010 — The persistence record is a separate representation](adr/0010-persistence-record-is-a-separate-representation.md)

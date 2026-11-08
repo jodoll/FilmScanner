@@ -1,6 +1,8 @@
 # ADR-0003 — Configuration persistence
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by
+  [ADR-0010](0010-persistence-record-is-a-separate-representation.md) — the
+  record is not packed and does not reuse the domain types
 - **Date:** 2026-11-07
 - **Deciders:** Project owner, firmware architect
 

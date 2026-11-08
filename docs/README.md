@@ -36,6 +36,7 @@ Architecture decision records:
 - [ADR-0007 — Config ownership and push](adr/0007-config-ownership-and-push.md)
 - [ADR-0008 — Pure activity state machine and orchestrator](adr/0008-pure-state-machine-and-orchestrator.md)
 - [ADR-0009 — Motion controller interface](adr/0009-motion-controller-interface.md)
+- [ADR-0010 — The persistence record is a separate representation](adr/0010-persistence-record-is-a-separate-representation.md)
 
 The top-level [AGENTS.md](../AGENTS.md) is the entry point for implementing
 agents. [README.md](../README.md) is the human overview.

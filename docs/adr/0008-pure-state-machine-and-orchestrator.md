@@ -49,38 +49,23 @@ them. `JOG` is a state, not a mode.
 
 ### One method per event
 
-There is no event enum. Each event is a method whose signature fits it:
+There is no event enum. Each event is a method whose signature fits it, and the
+declarations live in `StateMachine.h`:
 
-```cpp
-Result bootCompleted();
-Result startContinuousRun();
-Result scanOneFrame();
-Result shootCurrentFrame();
-Result jog();
-Result stop();
-Result abort();
-Result notchDetected();
-Result motionCompleted();
-Result pictureTaken();
-Result notchTimedOut();
-Result driverFaultDetected();
-Result buttonPressedShort();
-Result buttonPressedLong();
-```
+- commands: `startContinuousRun`, `scanOneFrame`, `shootCurrentFrame`, `jog`,
+  `stop`, `abort`, plus `bootCompleted` for the end of initialisation;
+- notifications: `notchDetected`, `motionCompleted`, `pictureTaken`,
+  `notchTimedOut`, `driverFaultDetected`, `buttonPressedShort`,
+  `buttonPressedLong`.
 
 Commands keep the protocol's verbs; notifications describe what happened.
 `jog()` carries no payload; the requested amount is a controller concern.
 
 ### Result
 
-```cpp
-struct Result {
-  State      state;
-  ErrorCode  error;          // NONE if accepted
-  StopReason reason;         // NONE unless this transition stopped something
-  uint16_t   announcements;  // semantic facts, not actions
-};
-```
+Every method returns a `Result` carrying four facts: the new `state`, an
+`error` (`NONE` when the call was accepted), a `reason` (`NONE` unless this
+transition stopped something), and an `announcements` bitmask.
 
 `announcements` is a bitmask of facts such as `RUN_STARTED`, `FRAME_DONE`,
 `RUN_STOPPED`, `STEP_FAILED`, `FAULT_RAISED`. `FRAME_DONE` can co-occur with

@@ -107,72 +107,59 @@ changes. They are diagnostics only; the motor is driven by the notch sensor.
 On boot, a config that fails validation is replaced by defaults and logged with
 `LOG WARN config invalid, defaults loaded`.
 
-## 4. EEPROM layout
+## 4. Persistence
 
-The Uno has 1,024 bytes of EEPROM. The configuration is stored once at address 0
-as a packed struct:
+The writable keys are stored as one self-describing record in EEPROM at address
+0. The record is a **separate representation**: it does not reuse the domain
+config slices, so a slice may change without changing what is stored. Its layout
+belongs to `ConfigRecord.h` and is not specified here; see
+[ADR-0010](adr/0010-persistence-record-is-a-separate-representation.md).
 
-```cpp
-struct PersistedConfig {
-  uint16_t magic;               // 0x4653 ("FS")
-  uint8_t  version;             // 1
-  uint8_t  reserved;            // 0
-  uint16_t length;              // sizeof(PersistedConfig) = 47
-  NotchConfig  notch;           // 2 bytes
-  ButtonConfig button;          // 4 bytes
-  CameraConfig camera;          // 8 bytes
-  MotionConfig motion;          // 14 bytes
-  RunConfig    run;             // 4 bytes
-  DriverConfig driver;          // 6 bytes
-  LogConfig    log;             // 1 byte
-  uint16_t crc;                 // 2 bytes; CRC16-CCITT over the preceding bytes
-} __attribute__((packed));
-```
+The record carries a magic value, a format version, its own length and a
+checksum. They exist so that a record written by a different build or firmware
+version is rejected instead of misread.
 
-The nested slices are the same ones in
-[03-architecture.md §5](03-architecture.md#5-types), defined next to their
-consumer. `DriverConfig` uses `uint8_t` for `stealthChop`, not `bool`, to keep
-the packed layout explicit. Load and save copy field by field between
-`PersistedConfig` and the aggregate `Config`; the slices are never serialized
-separately.
+Requirements:
 
-- `magic`: `0x4653` ("FS").
-- `version`: `1`. Bump only with a migration path; otherwise defaults are used.
-- `length`: `sizeof(PersistedConfig)`.
-- `crc`: CRC16-CCITT, polynomial `0x1021`, initial value `0xFFFF`, no final XOR,
-  computed over bytes `[0, offsetof(PersistedConfig, crc))`.
-- `reserved`: write 0.
+- One record at address 0, read and written as a whole. Never a partial update.
+- A record is usable only if magic, version, length, checksum **and** every value
+  range in [§3](#3-validation) pass.
+- A rejected or unreadable record is discarded entirely: the defaults are loaded
+  and `LOG WARN eeprom invalid, defaults loaded` is emitted. A partial load never
+  happens.
+- Format version is `1`. There is no migration; any other version is treated as
+  invalid.
+- `SAVE` is the only write path and is always explicit. The firmware never
+  auto-saves, so EEPROM wear is bounded by operator actions.
+- A save is verified by reading the record back and re-checking it. A failed save
+  logs `LOG ERROR eeprom write failed` and reports failure.
+- The record is small relative to the 1 KB EEPROM. Its exact size is not part of
+  the specification.
 
-### 4.1 Load algorithm
+### 4.1 Load
 
-1. `EEPROM.get(0, persisted)`.
-2. If `magic`, `version`, `length` or `crc` is wrong → return `false`.
-3. Copy the slices into the aggregate `Config`.
-4. Validate. If invalid → return `false`.
-5. Return `true`.
+1. Read the record bytes from the store. Unreadable → invalid.
+2. Reject it if magic, version, length or checksum fails.
+3. Copy the fields into the aggregate `Config`.
+4. Reject it if any value is out of range.
+5. On any rejection, load the defaults into the aggregate and log the warning.
+6. Push every slice into its consumer, whether the record was used or not, so the
+   components start from the loaded values rather than from their construction
+   defaults.
 
-`ConfigManager::begin()` on `false`: load defaults into the aggregate, log
-`LOG WARN eeprom invalid, defaults loaded`, then push every slice into its
-consumer. On success it also pushes every slice once, so the components start
-from the persisted values rather than from their construction defaults.
+### 4.2 Save
 
-### 4.2 Save algorithm
-
-1. Copy `Config` into `PersistedConfig`.
-2. Fill magic/version/length/reserved.
-3. Compute CRC.
-4. `EEPROM.put(0, persisted)`.
-5. Read back and verify the CRC.
-6. On mismatch: log `LOG ERROR eeprom write failed` and return `false`.
-
-`SAVE` is explicit. The firmware never auto-saves, so EEPROM wear is bounded by
-operator actions.
+1. Build a record from the aggregate, including magic, version, length and
+   checksum.
+2. Write the record bytes as a whole.
+3. Read them back and verify the checksum.
+4. On mismatch: log `LOG ERROR eeprom write failed` and report failure.
 
 ### 4.3 Reset
 
 `RESET_CONFIG` loads the factory defaults into the aggregate, pushes every slice
-to its consumer, writes the aggregate to EEPROM, and returns success. The
-command handler emits `EVT CONFIG_RESET`. It is allowed only in `IDLE`.
+to its consumer, writes the defaults to EEPROM, and returns success. The command
+handler emits `EVT CONFIG_RESET`. It is allowed only in `IDLE`.
 
 ## 5. Live updates and ownership
 
@@ -201,6 +188,9 @@ Rules:
 - `applyConfig` accepts the validated value as-is; a component must not clamp or
   normalise, or the copy and the truth diverge.
 - `begin()` and `reset()` push every slice.
+- The persisted record is built from, and mapped into, the aggregate only. It
+  never reads component state. See
+  [ADR-0010](adr/0010-persistence-record-is-a-separate-representation.md).
 - `SET` is only allowed in `IDLE`, so no activity observes a half-applied change.
 
 Changing `microsteps`, `seekSpeed` or `acceleration` changes the physical

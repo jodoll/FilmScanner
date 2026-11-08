@@ -17,29 +17,11 @@ where they live in the rest of the core.
 
 ## Decision
 
-Split motion into an interface and a stepper implementation:
-
-```cpp
-class IMotionController {
-public:
-  virtual ~IMotionController() = default;
-
-  virtual void startSeek() = 0;
-  virtual void applyOffset() = 0;
-  virtual void startJog(int32_t amount) = 0;
-  virtual void stop() = 0;        // controlled deceleration
-  virtual void halt() = 0;        // immediate
-  virtual void idle() = 0;        // become inactive; may de-energize
-  virtual void enable() = 0;      // maintenance override
-  virtual void disable() = 0;
-  virtual void applyConfig(const MotionConfig& config) = 0;
-
-  virtual void poll() = 0;
-  virtual bool isMoving() const = 0;
-  virtual bool isEnabled() const = 0;
-  virtual int32_t position() const = 0;
-};
-```
+Split motion into an interface and a stepper implementation. `IMotionController`
+(declared in `IMotionController.h`) speaks in activities rather than in motor
+primitives: start a seek, apply the offset, start a jog by a signed amount, stop
+with controlled deceleration, halt immediately, become idle, take or release the
+maintenance enable override, poll, and report moving/enabled/position.
 
 `StepperMotionController` implements it with `IStepperMotor` and
 `MotionConfig`. It owns:

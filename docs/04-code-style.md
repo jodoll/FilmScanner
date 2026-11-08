@@ -140,6 +140,8 @@ Rules:
 - `StateMachine.h` includes no project header; it owns its vocabulary.
 - Components must not include `ConfigManager.h`. Each consumer defines and stores
   its own slice and exposes `applyConfig`; `ConfigManager` pushes into it.
+- Declarations live in headers, not in `docs/`. The docs state behavior and the
+  wire contract; do not paste interfaces, structs or enums into them.
 - Avoid macros except for compile-time build flags and pin definitions.
 
 ## 6. Error handling

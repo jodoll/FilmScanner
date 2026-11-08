@@ -14,6 +14,7 @@ Terms used throughout the documentation, in plain language.
 | **Blanking time** | A short period after a chopper switching edge during which the driver ignores current measurements, to avoid noise. Set by the library; not a config key. |
 | **Chopper** | The part of the driver that switches the coil current on and off rapidly to regulate it. |
 | **CoolStep** | A TMC2209 feature that lowers current when the load is low. Disabled here for repeatable framing. |
+| **Config record** | The persisted wire format (`ConfigRecord`). A flat struct of plain scalars with its own header and checksum; it does not reuse the config slices. See [ADR-0010](adr/0010-persistence-record-is-a-separate-representation.md). |
 | **Config slice** | A narrow group of related config values defined next to its single consumer (`NotchConfig`, `ButtonConfig`, `CameraConfig`, `MotionConfig`, `RunConfig`, `DriverConfig`, `LogConfig`). The consumer owns the applied values; components never receive `ConfigManager`. |
 | **CRC** | Cyclic Redundancy Check. A checksum used to detect corrupted EEPROM data. |
 | **DIR** | Direction signal to the stepper driver. |

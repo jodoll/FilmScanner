@@ -87,8 +87,8 @@ not require the component headers.
 
 ### Persistence
 
-`PersistedConfig` is the EEPROM wire format and is assembled from the same slice
-types. Load and save copy field by field. The packed layout stays 47 bytes.
+The persisted record is a separate representation, not assembled from the slice
+types; see [ADR-0010](0010-persistence-record-is-a-separate-representation.md).
 
 ## Consequences
 

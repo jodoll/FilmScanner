@@ -117,7 +117,7 @@ and `/1` separately. If `/0` fails, `/1` still runs.
 
 Every core interface is replaced by a fake in the native tests: clock, notch and
 button inputs, focus and shutter outputs, stepper motor, motion controller, TMC
-driver, config store, and recording log/event/status sinks. Keep them in
+driver, non-volatile store, and recording log/event/status sinks. Keep them in
 `test/fakes/`.
 
 - The pure `StateMachine` needs no fakes at all.
@@ -159,9 +159,10 @@ including its boundaries and error paths.
   value, the `microsteps` allowed set, and the cross-field rules
   (`longPressMs > buttonDebounceMs`, `maxSeekSteps` is 0 or at least 100). See
   [06-configuration.md §3](06-configuration.md#3-validation).
-- **Persistence** — the aggregate round-trips through `PersistedConfig`, the
-  packed size is 47, and corrupt CRC or a wrong magic/version/length is
-  rejected. See [06-configuration.md §4](06-configuration.md#4-eeprom-layout).
+- **Persistence** — the record round-trips through `ConfigRecord`; a wrong
+  magic, version, length or checksum, or an out-of-range value, discards the
+  record wholesale and loads the defaults; a save is verified by read-back. See
+  [06-configuration.md §4](06-configuration.md#4-persistence).
 - **Serial grammar** — case-insensitivity, whitespace, CRLF, argument count,
   numeric overflow, overlong keys and lines. See
   [05-serial-protocol.md](05-serial-protocol.md).
@@ -193,8 +194,13 @@ including its boundaries and error paths.
 - **Status LED** — the pattern for each state, including `STOPPING` and
   `OFFSET`. See [03-architecture.md §7.8](03-architecture.md#78-statusled).
 
-Where the specification gives a concrete number, test it: the persisted config
-is 47 bytes and the default frame move is 1290 microsteps.
+Where the specification gives a concrete number, test it: the default frame move
+is 1290 microsteps.
+
+Wire names are pinned the same way: one parameterized case per enum member
+asserts that `toString` returns the string in
+[05-serial-protocol.md](05-serial-protocol.md), so a new state, event or error
+code fails the test until it is documented and mapped.
 
 ## 5. Coverage targets
 

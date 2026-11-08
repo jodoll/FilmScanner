@@ -13,54 +13,46 @@ collaborator at a time, and only then the configuration, serial and HAL layers.
   conventions are in [09-testing.md §1](09-testing.md#1-strategy); follow them.
 - Review after each step. A milestone is done when its acceptance line passes
   and its behavior has direct tests.
-- The docs are the source of truth. Do not edit them without explicit approval.
-  If a behavior is missing or ambiguous, propose the doc change and wait.
+- The docs are the source of truth for behavior; the headers are the source of
+  truth for declarations. Do not edit `docs/` without explicit approval. If a
+  behavior is missing or ambiguous, propose the doc change and wait.
 - Keep `lib/scanner_core/` free of `Arduino.h`.
 - Do not extend the prototype in `src/main.cpp`; replace it.
 - Do not inject `ConfigManager` into a component. Each consumer defines and
   stores its own config slice; the manager pushes.
+- The contract headers are already in place. Treat their declarations as the
+  agreed shape: change one only when a test or a doc change requires it, and
+  never copy the declaration back into `docs/`.
 - Run `pio test -e native` after every step.
 - Run `pio run -e uno` after every step that touches the HAL.
 
 ## 1. Milestone 0 — Project setup
 
-### Tasks
+Already in place: `platformio.ini` has the `uno` and `native` environments with
+the agreed libraries; `lib/scanner_core/` has its manifest and include tree with
+the contract headers; `test/test_native/` has the GoogleTest entry point and a
+smoke test.
 
-1. Update `platformio.ini` to two environments:
-   - `uno`: ATmega328P/Uno with the Arduino framework, 115200 monitor, and
-     library dependencies `teemuatlut/TMCStepper@0.7.3` and
-     `waspinator/AccelStepper@1.64`. Build as C++11 with exceptions and RTTI
-     disabled, `-Wall -Wextra`, and defines for firmware version, protocol
-     version and default log level.
-   - `native`: PlatformIO's `native` platform with GoogleTest, the
-     `lib/scanner_core/include` include path, and no `src/` sources. The host
-     test build may use C++17; core sources stay C++11-compatible.
-2. Remove the Janelia TMC2209 dependency and the obsolete `BAUD_RATE` flag.
-3. Create the directory structure from
-   [03-architecture.md §11](03-architecture.md#11-file-layout).
-4. Add a PlatformIO library manifest for `scanner_core` pointing at
-   `include/` and `src/`.
-5. Provide the single GoogleTest entry point in `test/test_native/`:
-   `InitGoogleTest` followed by `RUN_ALL_TESTS`.
-6. Delete `src/main.hpp`; it belongs to the old prototype.
-7. Leave `src/main.cpp` as a placeholder until the HAL milestone; make sure the
-   `native` environment does not compile it.
+### Remaining
+
+1. Replace the prototype `src/main.cpp` at the HAL milestone. Do not extend it.
+2. Keep the `native` environment free of `src/` sources.
 
 ### Acceptance
 
-- `pio run -e uno` compiles (the prototype may still be there).
+- `pio run -e uno` compiles.
 - `pio test -e native` builds GoogleTest and runs the smoke test.
 
 ## 2. Milestone 1 — Pure state machine
 
-Implement the state machine from
-[03-architecture.md §5–6](03-architecture.md#5-types) completely. This is the
-core logic and it has no collaborators.
+`StateMachine.h` already declares the vocabulary, `Result` and the class. This
+milestone implements
+[03-architecture.md §6](03-architecture.md#6-state-machine) completely. It has
+no collaborators.
 
 ### Files
 
-- `StateMachine.h/.cpp` — `State`, `Mode`, `StopReason`, `ErrorCode`,
-  `Announcement`, `Result`, and the class itself.
+- `StateMachine.cpp` — the transition logic.
 - A state-machine test file.
 
 ### What to cover
@@ -196,21 +188,23 @@ aggregate, validation, persistence and the pushes.
 
 ### Files
 
-- `Config.h/.cpp` — aggregate, defaults, ranges, validation, `PersistedConfig`,
-  CRC16-CCITT.
+- `Config.h/.cpp` — aggregate, defaults, ranges, validation.
+- `ConfigRecord.h/.cpp` — the record, its header and checksum, and the mapping
+  to and from `Config`.
 - `ConfigManager.h/.cpp`, `LogConfig.h`, `Logger.h/.cpp`.
-- `FakeConfigStore.h`, `RecordingLogSink.h`, tests for config, manager and
-  logger.
+- `FakeNonVolatileStore.h`, `RecordingLogSink.h`, tests for config, record,
+  manager and logger.
 
 ### What to cover
 
 - Defaults and every range boundary.
 - Cross-field rules.
-- Aggregate round-trip, packed size 47, CRC and header rejection.
+- Record round-trip; rejection on a wrong magic, version, length or checksum;
+  rejection on an out-of-range value; save verified by read-back.
 - `set()` validates, mutates and pushes exactly one consumer; rejection changes
   nothing.
 - `begin()` / `reset()` push all slices.
-- `save()` serialises the aggregate.
+- `save()` builds the record from the aggregate, never from component state.
 - `get()` / `CONFIG` and read-only keys.
 - The offset-recalibration warning.
 - Logger level push and buffer handling.
@@ -219,7 +213,7 @@ aggregate, validation, persistence and the pushes.
 
 - `ConfigManager` is the only owner of the aggregate.
 - Components never include `ConfigManager.h`.
-- The packed layout is 47 bytes.
+- `Config` does not know it is persisted; the record is its own type.
 
 ## 9. Milestone 8 — CommandParser
 
@@ -257,7 +251,7 @@ aggregate, validation, persistence and the pushes.
 - `src/hal/ArduinoClock`, `ArduinoInput` (active-low, `INPUT_PULLUP`),
   `ArduinoOutput`, `AccelStepperMotor` (STEP/DIR, EN active-low),
   `TmcStepperDriver` (TMCStepper 0.7.3, SoftwareSerial),
-  `EepromConfigStore` (packed struct + CRC), `SerialLogSink`,
+  `EepromStore` (byte block at address 0), `SerialLogSink`,
   `SerialEventSink`, `SerialStatusSink`, `SerialCommandHandler`.
 - `src/main.cpp` composition root.
 
@@ -267,9 +261,9 @@ aggregate, validation, persistence and the pushes.
   active-low. It issues no pulses while disabled.
 - `TmcStepperDriver` configures the driver only; the register sequence is in
   [07-stepper-tmc2209-guide.md §10.4](07-stepper-tmc2209-guide.md#104-what-the-firmware-writes).
-  It implements `applyConfig(const DriverConfig&)`.
-- `EepromConfigStore` stores the packed aggregate with CRC16-CCITT and verifies
-  the readback after a save.
+  It implements `applyConfig` for `DriverConfig`.
+- `EepromStore` reads and writes the record bytes at address 0. It knows nothing
+  about `Config` or `ConfigRecord`; the manager builds and validates the record.
 - `SerialLogSink` writes `LOG <LEVEL> <message>` and drops a message rather than
   block.
 - `SerialEventSink` buffers events in a small FIFO and writes `EVT` lines in the
