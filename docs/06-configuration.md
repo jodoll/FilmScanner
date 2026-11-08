@@ -9,25 +9,25 @@ All values are changeable over the serial protocol and persisted in EEPROM with
 
 | Key | Type | Unit | Default | Range | Live behavior |
 |---|---|---|---|---|---|
-| `microsteps` | uint16 | µsteps/full step | `16` | `1,2,4,8,16,32,64` | Immediately; `CommandHandler` re-applies TMC |
-| `runCurrentMa` | uint16 | mA RMS | `900` | `100..2000` | Immediately; `CommandHandler` re-applies TMC |
-| `holdCurrentPercent` | uint8 | % of run current | `50` | `0..100` | Immediately; `CommandHandler` re-applies TMC |
-| `stealthChop` | bool | — | `1` | `0,1` | Immediately; `CommandHandler` re-applies TMC |
+| `microsteps` | uint16 | µsteps/full step | `16` | `1,2,4,8,16,32,64` | Immediately pushed to the TMC driver |
+| `runCurrentMa` | uint16 | mA RMS | `900` | `100..2000` | Immediately pushed to the TMC driver |
+| `holdCurrentPercent` | uint8 | % of run current | `50` | `0..100` | Immediately pushed to the TMC driver |
+| `stealthChop` | bool | — | `1` | `0,1` | Immediately pushed to the TMC driver |
 | `seekSpeed` | uint16 | µsteps/s | `400` | `50..2000` | Next move |
 | `acceleration` | uint16 | µsteps/s² | `2000` | `100..20000` | Next move |
 | `jogSpeed` | uint16 | µsteps/s | `200` | `50..1000` | Next jog |
 | `offsetSteps` | int32 | µsteps | `0` | `-5000..5000` | Next frame |
-| `notchDebounceMs` | uint16 | ms | `10` | `2..100` | Next `NotchSensor::update()` |
-| `buttonDebounceMs` | uint16 | ms | `20` | `5..100` | Next `Button::update()` |
-| `longPressMs` | uint16 | ms | `2000` | `500..10000` | Next `Button::update()` |
-| `notchTimeoutMs` | uint16 | ms | `15000` | `1000..60000` | Next seek |
-| `maxSeekSteps` | uint32 | µsteps | `0` | `0..1000000` | Next seek |
-| `settleMs` | uint16 | ms | `200` | `0..5000` | Next camera sequence |
-| `focusMs` | uint16 | ms | `300` | `0..5000` | Next camera sequence |
-| `shutterMs` | uint16 | ms | `150` | `10..2000` | Next camera sequence |
-| `postShotMs` | uint16 | ms | `300` | `0..5000` | Next camera sequence |
-| `logLevel` | uint8 | — | `2` | `0..3` | Immediately; `CommandHandler` sets level |
-| `statusPeriodMs` | uint16 | ms | `0` | `0..60000` | Next `tick()` |
+| `notchDebounceMs` | uint16 | ms | `10` | `2..100` | Pushed; applies to the next `update()` |
+| `buttonDebounceMs` | uint16 | ms | `20` | `5..100` | Pushed; applies to the next `update()` |
+| `longPressMs` | uint16 | ms | `2000` | `500..10000` | Pushed; applies to the next `update()` |
+| `notchTimeoutMs` | uint16 | ms | `15000` | `1000..60000` | Pushed; next seek |
+| `maxSeekSteps` | uint32 | µsteps | `0` | `0..1000000` | Pushed; next seek |
+| `settleMs` | uint16 | ms | `200` | `0..5000` | Pushed; next camera sequence |
+| `focusMs` | uint16 | ms | `300` | `0..5000` | Pushed; next camera sequence |
+| `shutterMs` | uint16 | ms | `150` | `10..2000` | Pushed; next camera sequence |
+| `postShotMs` | uint16 | ms | `300` | `0..5000` | Pushed; next camera sequence |
+| `logLevel` | uint8 | — | `2` | `0..3` | Immediately pushed to the logger |
+| `statusPeriodMs` | uint16 | ms | `0` | `0..60000` | Pushed; next `tick()` |
 
 `maxSeekSteps = 0` disables the step-budget safety net; the notch timeout is
 then the only stop criterion. This is the default.
@@ -35,11 +35,12 @@ then the only stop criterion. This is the default.
 `logLevel`: `0 = ERROR`, `1 = WARN`, `2 = INFO`, `3 = DEBUG`.
 `statusPeriodMs = 0` disables periodic status lines.
 
-At runtime `ConfigManager` owns one `Config` instance for the whole program.
-Components hold a reference to a narrow slice of that object and read it when
-they need a value. They never receive `ConfigManager` and never copy the values
-at construction, so a `SET` is visible on the next use without a callback. See
-[§5](#5-live-reads-and-ownership).
+At runtime `ConfigManager` owns one aggregate `Config` — the authoritative copy.
+Each consumer defines its own slice, stores the applied values, and exposes
+`applyConfig`. A change is validated against the aggregate and then **pushed** to
+the owning consumer, which stores it and may react. Components never receive
+`ConfigManager`, never read a shared object, and never copy values at
+construction. See [§5](#5-live-updates-and-ownership).
 
 ### 1.2 Read-only keys
 
@@ -117,21 +118,23 @@ struct PersistedConfig {
   uint8_t  version;             // 1
   uint8_t  reserved;            // 0
   uint16_t length;              // sizeof(PersistedConfig) = 47
-  InputConfig  input;           // 6 bytes
+  NotchConfig  notch;           // 2 bytes
+  ButtonConfig button;          // 4 bytes
   CameraConfig camera;          // 8 bytes
-  MotionConfig motion;          // 6 bytes
-  RunConfig    run;             // 12 bytes; fields ordered to avoid padding
+  MotionConfig motion;          // 14 bytes
+  RunConfig    run;             // 4 bytes
   DriverConfig driver;          // 6 bytes
-  uint8_t      logLevel;        // 1 byte
+  LogConfig    log;             // 1 byte
   uint16_t crc;                 // 2 bytes; CRC16-CCITT over the preceding bytes
 } __attribute__((packed));
 ```
 
 The nested slices are the same ones in
-[03-architecture.md §5](03-architecture.md#5-types). `DriverConfig` uses
-`uint8_t` for `stealthChop`, not `bool`, to keep the packed layout explicit.
-Load and save copy field by field between `PersistedConfig` and the single
-in-memory `Config`; the slices are never serialized separately.
+[03-architecture.md §5](03-architecture.md#5-types), defined next to their
+consumer. `DriverConfig` uses `uint8_t` for `stealthChop`, not `bool`, to keep
+the packed layout explicit. Load and save copy field by field between
+`PersistedConfig` and the aggregate `Config`; the slices are never serialized
+separately.
 
 - `magic`: `0x4653` ("FS").
 - `version`: `1`. Bump only with a migration path; otherwise defaults are used.
@@ -144,13 +147,14 @@ in-memory `Config`; the slices are never serialized separately.
 
 1. `EEPROM.get(0, persisted)`.
 2. If `magic`, `version`, `length` or `crc` is wrong → return `false`.
-3. Copy the slices into the owned `Config` in place.
+3. Copy the slices into the aggregate `Config`.
 4. Validate. If invalid → return `false`.
 5. Return `true`.
 
-`ConfigManager::begin()` on `false`: load defaults in place, log
-`LOG WARN eeprom invalid, defaults loaded`, and continue. Never replace the
-`Config` object; components hold references into it.
+`ConfigManager::begin()` on `false`: load defaults into the aggregate, log
+`LOG WARN eeprom invalid, defaults loaded`, then push every slice into its
+consumer. On success it also pushes every slice once, so the components start
+from the persisted values rather than from their construction defaults.
 
 ### 4.2 Save algorithm
 
@@ -166,38 +170,41 @@ operator actions.
 
 ### 4.3 Reset
 
-`RESET_CONFIG` loads the factory defaults into the existing `Config` in place,
-writes them to EEPROM, and emits `EVT CONFIG_RESET`. It is allowed only in
-`IDLE`.
+`RESET_CONFIG` loads the factory defaults into the aggregate, pushes every slice
+to its consumer, writes the aggregate to EEPROM, and returns success. The
+command handler emits `EVT CONFIG_RESET`. It is allowed only in `IDLE`.
 
-## 5. Live reads and ownership
+## 5. Live updates and ownership
 
-`ConfigManager` owns the single `Config` object. Each component receives a
-reference to the slice it needs and reads the values when it uses them:
+`ConfigManager` owns the aggregate `Config` — the single source of truth. Each
+consumer defines its slice, owns a copy of the applied values, and exposes
+`applyConfig`:
 
-| Slice | Consumer | Read when |
-|---|---|---|
-| `InputConfig` | `NotchSensor`, `Button` | every `update()` |
-| `CameraConfig` | `Camera` | start of each camera phase |
-| `MotionConfig` | `MotionController` | start of a move or jog |
-| `RunConfig` | `ScannerController` | start of a seek/frame or status check |
-| `DriverConfig` | `CommandHandler` → `ITmcDriver` | after a successful `SET` |
+| Slice | Consumer | Pushed on | Reaction |
+|---|---|---|---|
+| `NotchConfig` | `NotchSensor` | `notchDebounceMs` | restart the debounce window |
+| `ButtonConfig` | `Button` | `buttonDebounceMs`, `longPressMs` | next `update()` |
+| `CameraConfig` | `Camera` | `settleMs`, `focusMs`, `shutterMs`, `postShotMs` | next sequence |
+| `MotionConfig` | `IMotionController` (`StepperMotionController`) | `seekSpeed`, `acceleration`, `jogSpeed`, `offsetSteps`, `maxSeekSteps` | next move |
+| `RunConfig` | `ScannerController` | `notchTimeoutMs`, `statusPeriodMs` | next seek / status check |
+| `DriverConfig` | `ITmcDriver` | `microsteps`, `runCurrentMa`, `holdCurrentPercent`, `stealthChop` | rewrite the registers immediately |
+| `LogConfig` | `Logger` | `logLevel` | change the level immediately |
 
-`ConfigManager::set()` mutates the existing `Config` in place and returns
-`ConfigSetResult`. On success, `result.change` is `DRIVER` for the four driver
-keys and `LOG_LEVEL` for `logLevel`; `CommandHandler` applies those two changes.
-Everything else is picked up automatically because the component reads the slice
-on its next use.
+`ConfigManager::set()` validates against the aggregate, mutates it, and calls
+`applyConfig` on the owning consumer. It returns `ErrorCode`; there is no change
+descriptor and no second application step. A rejected set changes nothing and
+pushes nothing.
 
-This is why `ConfigManager::begin()` and `reset()` must never replace the
-`Config` object with a temporary. They write into the same instance so the
-references held by the components stay valid.
+Rules:
 
-`SET` is only allowed in `IDLE`, so a component cannot observe a half-applied
-change during a run.
+- The aggregate is authoritative. Values are never read back from components.
+- `applyConfig` accepts the validated value as-is; a component must not clamp or
+  normalise, or the copy and the truth diverge.
+- `begin()` and `reset()` push every slice.
+- `SET` is only allowed in `IDLE`, so no activity observes a half-applied change.
 
 Changing `microsteps`, `seekSpeed` or `acceleration` changes the physical
-stopping position. The firmware logs:
+stopping position. The manager logs:
 
 ```
 LOG WARN offsetSteps must be recalibrated after this change

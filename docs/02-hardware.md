@@ -250,8 +250,7 @@ knows "two active-high outputs"; the electrical details live here.
 - No external resistor needed for the onboard LED.
 - Patterns:
   - `IDLE`: 1 Hz blink (500 ms on, 500 ms off).
-  - Active (`SEEK`, `ALIGN`, `SETTLE`, `FOCUS`, `SHUTTER`, `POST`, `JOG`):
-    solid on.
+  - Active (`SEEK`, `STOPPING`, `OFFSET`, `CAMERA`, `JOG`): solid on.
   - `FAULT`: 5 Hz blink (100 ms on, 100 ms off).
   - `BOOT`: solid for the first 500 ms, then the state pattern.
 

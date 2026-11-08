@@ -1,6 +1,6 @@
 # ADR-0005 — Config slices and dependency direction
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0007](0007-config-ownership-and-push.md)
 - **Date:** 2026-11-07
 - **Deciders:** Project owner, firmware architect
 

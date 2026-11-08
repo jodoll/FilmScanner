@@ -130,7 +130,7 @@ In `IDLE` it ensures the motor is disabled and clears any `ENABLE` override. In
 
 | Field | Values |
 |---|---|
-| `state` | `BOOT`, `IDLE`, `SEEK`, `ALIGN`, `CAMERA`, `JOG`, `FAULT` |
+| `state` | `BOOT`, `IDLE`, `SEEK`, `STOPPING`, `OFFSET`, `CAMERA`, `JOG`, `FAULT` |
 | `mode` | `NONE`, `RUN`, `SINGLE`, `SHOOT` |
 | `stopRequested` | `0` or `1` |
 | `motor` | `enabled` or `disabled` |

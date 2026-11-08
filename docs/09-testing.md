@@ -28,7 +28,7 @@ This applies to methods and classes, not only to end-to-end acceptance:
 - Every public method in `scanner_core` has at least one direct unit test.
 - Every branch, guard, boundary and error code has a test.
 - Every state transition in
-  [03-architecture.md §6.1](03-architecture.md#61-transitions) has a test.
+  [03-architecture.md §6.1](03-architecture.md#61-events-and-transitions) has a test.
 - Every command in [05-serial-protocol.md](05-serial-protocol.md) has a
   happy-path test and, where applicable, an error test.
 - Tests assert observable behavior (return values, emitted events, output
@@ -116,9 +116,14 @@ and `/1` separately. If `/0` fails, `/1` still runs.
 ## 3. Fakes
 
 Every core interface is replaced by a fake in the native tests: clock, notch and
-button inputs, focus and shutter outputs, stepper motor, TMC driver, config
-store, and recording log/event/status sinks. Keep them in `test/fakes/`.
+button inputs, focus and shutter outputs, stepper motor, motion controller, TMC
+driver, config store, and recording log/event/status sinks. Keep them in
+`test/fakes/`.
 
+- The pure `StateMachine` needs no fakes at all.
+- `StepperMotionController` is tested against `FakeStepperMotor`.
+- `ScannerController` is tested against `FakeMotionController` plus the real
+  `NotchSensor`, `Button` and `Camera` over `FakeInput`/`FakeOutput`/`FakeClock`.
 - No real time and no hardware.
 - A fake records what the core asked for and lets the test drive what happens
   next (`advance(ms)`, `finishMove()`, `setActive()`, `setFault()`).
@@ -151,29 +156,42 @@ expected, not a checklist; every behavior named here needs direct tests,
 including its boundaries and error paths.
 
 - **Config validation** — defaults, every range boundary and an out-of-range
-  value, the `microsteps` power-of-two rule, cross-field rules
-  (`longPressMs > buttonDebounceMs`, `maxSeekSteps` is 0 or at least 100), and
-  the derived values. See [06-configuration.md §3](06-configuration.md#3-validation).
-- **Persistence** — round-trip through the packed struct, corrupt CRC, wrong
-  magic/version/length. See
-  [06-configuration.md §4](06-configuration.md#4-eeprom-layout).
+  value, the `microsteps` allowed set, and the cross-field rules
+  (`longPressMs > buttonDebounceMs`, `maxSeekSteps` is 0 or at least 100). See
+  [06-configuration.md §3](06-configuration.md#3-validation).
+- **Persistence** — the aggregate round-trips through `PersistedConfig`, the
+  packed size is 47, and corrupt CRC or a wrong magic/version/length is
+  rejected. See [06-configuration.md §4](06-configuration.md#4-eeprom-layout).
 - **Serial grammar** — case-insensitivity, whitespace, CRLF, argument count,
   numeric overflow, overlong keys and lines. See
   [05-serial-protocol.md](05-serial-protocol.md).
-- **Inputs** — debounce, one-shot edges, boot-held button, short versus long
-  press. See [03-architecture.md §7.1–7.2](03-architecture.md#71-notchsensor).
+- **Inputs** — notch and button debounce, one-shot edges, boot-held button,
+  short versus long press. See
+  [03-architecture.md §7.1–7.2](03-architecture.md#71-notchsensor).
 - **Camera** — phase order and timing, abort in each phase, and an active
   shutter pulse always completes. See
   [03-architecture.md §7.3](03-architecture.md#73-camera).
-- **Motion** — pass-through, enable/disable, position, and JOG never timing out.
-  See [03-architecture.md §7.4](03-architecture.md#74-motioncontroller).
+- **Motion** — `StepperMotionController`: seek, offset and jog start; the enable
+  policy and override; `idle()` de-energizes unless overridden; `halt()` clears
+  the override; stop versus halt; completion. See
+  [03-architecture.md §7.5](03-architecture.md#75-imotioncontroller-and-steppermotioncontroller).
 - **State machine** — every transition in
-  [03-architecture.md §6.1](03-architecture.md#61-transitions), every stop
-  reason, every event, and every mode (`RUN`, `SINGLE`, `JOG`, `SHOOT`).
-- **Command handling** — each command's happy path and its error responses, and
-  `SET` only in `IDLE`.
-- **Status LED** — the pattern for each state. See
-  [03-architecture.md §7.6](03-architecture.md#76-statusled).
+  [03-architecture.md §6.1](03-architecture.md#61-events-and-transitions), every
+  guard and rejection, every stop reason, every announcement bit, and mode
+  memory. It is pure, so these tests use no fakes and no clock.
+- **Orchestration** — `ScannerController`: the entry and exit actions in
+  [03-architecture.md §6.3](03-architecture.md#63-entry-and-exit-actions), the
+  announcement-to-event mapping, counters, deadlines and the snapshot. Use
+  `FakeMotionController`; keep the other collaborators real over fakes.
+- **Config push** — `ConfigManager`: a valid set pushes to exactly one consumer,
+  a rejected set leaves the aggregate and every consumer unchanged, `begin()`
+  and `reset()` push all slices, `save()` serialises the aggregate, and
+  `get()`/read-only/unknown behave as specified. See
+  [06-configuration.md §5](06-configuration.md#5-live-updates-and-ownership).
+- **Command handling** — each command maps to the right controller or manager
+  call, `SET` is rejected outside `IDLE`, and save/reset emit their events.
+- **Status LED** — the pattern for each state, including `STOPPING` and
+  `OFFSET`. See [03-architecture.md §7.8](03-architecture.md#78-statusled).
 
 Where the specification gives a concrete number, test it: the persisted config
 is 47 bytes and the default frame move is 1290 microsteps.
@@ -183,7 +201,7 @@ is 47 bytes and the default frame move is 1290 microsteps.
 - 100 % of public methods in `scanner_core` are exercised.
 - Every `ErrorCode` path is reachable by a test.
 - Every state-machine transition in
-  [03-architecture.md §6.1](03-architecture.md#61-transitions) has at least one
+  [03-architecture.md §6.1](03-architecture.md#61-events-and-transitions) has at least one
   test.
 - Every command in the protocol has a happy-path and an error test where
   applicable.

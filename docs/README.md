@@ -15,7 +15,7 @@ firmware. Read in this order:
 | 08 | [Calibration](08-calibration.md) | Step-by-step commissioning on the real machine |
 | 09 | [Testing](09-testing.md) | Native unit tests, fakes, hardware acceptance checklist |
 | 10 | [Troubleshooting](10-troubleshooting.md) | Symptom → cause → action |
-| 11 | [Implementation plan](11-implementation-plan.md) | Ordered milestones and file-by-file tasks |
+| 11 | [Implementation plan](11-implementation-plan.md) | Core-first, class-by-class milestones |
 | 12 | [Glossary](12-glossary.md) | Terms used in the docs |
 
 Wiring diagram:
@@ -31,7 +31,11 @@ Architecture decision records:
 - [ADR-0003 — Configuration persistence](adr/0003-config-persistence.md)
 - [ADR-0004 — ASCII serial protocol](adr/0004-serial-protocol.md)
 - [ADR-0005 — Config slices and dependency direction](adr/0005-config-slices-and-dependency-direction.md)
+  (superseded by ADR-0007)
 - [ADR-0006 — GoogleTest for native unit tests](adr/0006-googletest-for-native-tests.md)
+- [ADR-0007 — Config ownership and push](adr/0007-config-ownership-and-push.md)
+- [ADR-0008 — Pure activity state machine and orchestrator](adr/0008-pure-state-machine-and-orchestrator.md)
+- [ADR-0009 — Motion controller interface](adr/0009-motion-controller-interface.md)
 
 The top-level [AGENTS.md](../AGENTS.md) is the entry point for implementing
 agents. [README.md](../README.md) is the human overview.

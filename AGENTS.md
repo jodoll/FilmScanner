@@ -73,14 +73,25 @@ the docs and the decision records in `docs/adr/`.
     and photo during a run, but stops immediately during manual moves. `ABORT` /
     long press stops immediately in every state.
 13. **Motor is disabled in IDLE and FAULT.** The holder does not back-drive when
-    de-energized, so holding current is not needed while idle. The explicit
+    de-energized, so holding current is not needed while idle. `StepperMotionController`
+    owns this policy; the orchestrator only calls `idle()`. The explicit
     `ENABLE` maintenance command is the only exception: it keeps the driver
     energized in `IDLE` until `DISABLE`, any motion command, `ABORT`, or a fault.
 14. **Explicit persistence:** `SET` changes RAM only; `SAVE` writes EEPROM.
-15. **Narrow config dependencies:** components take only the config slice they
-    need (`InputConfig`, `CameraConfig`, `MotionConfig`, `RunConfig`,
-    `DriverConfig`). Never inject `ConfigManager` into a component. See
-    [ADR-0005](docs/adr/0005-config-slices-and-dependency-direction.md).
+15. **Config ownership and push:** each consumer defines and stores its own
+    config slice (`NotchConfig`, `ButtonConfig`, `CameraConfig`, `MotionConfig`,
+    `RunConfig`, `DriverConfig`, `LogConfig`). `ConfigManager` owns the aggregate
+    and pushes changes through `applyConfig`. Never inject `ConfigManager` into a
+    component. See [ADR-0007](docs/adr/0007-config-ownership-and-push.md).
+16. **Pure activity state machine:** `StateMachine` has no project dependencies,
+    states are activities (`SEEK`, `STOPPING`, `OFFSET`, `CAMERA`, `JOG`), one
+    method per event, and the result is `{state, error, reason, announcements}`.
+    Entry/exit actions live in `ScannerController`. See
+    [ADR-0008](docs/adr/0008-pure-state-machine-and-orchestrator.md).
+17. **Motion seam:** `ScannerController` talks to `IMotionController` in
+    activities (`startSeek`, `applyOffset`, `startJog`, `stop`, `halt`, `idle`);
+    `StepperMotionController` owns enable polarity, units and pulses. See
+    [ADR-0009](docs/adr/0009-motion-controller-interface.md).
 
 ---
 
@@ -123,7 +134,8 @@ There is no CI workflow; run the commands locally.
 │   ├── main.cpp               ← composition root
 │   └── hal/                   ← Arduino implementations of the interfaces
 └── test/
-    ├── test_native/           ← GoogleTest tests + fakes
+    ├── test_native/           ← GoogleTest tests
+    ├── fakes/                 ← test doubles
     └── ...
 ```
 
@@ -157,10 +169,13 @@ pipelines:
   values, assertion choice, fakes) are defined in
   [docs/09-testing.md §1](docs/09-testing.md#1-strategy). Follow that document;
   do not invent a local variant.
-- Every public class has a single responsibility and is testable with fakes.
+- Every public class has a single responsibility and is testable in isolation;
+  use fakes only where an interface exists.
 - **Depend on the narrowest type.** Do not pass a manager or facade when a value
-  or small config struct is enough. Components must not include
-  `ConfigManager.h`.
+  or small config struct is enough. Components define and store their own slice;
+  they must not include `ConfigManager.h`.
+- **States are activities, not effects.** Entry/exit actions belong to the
+  orchestrator; the pure machine returns facts, never action lists.
 - Errors are values (`ErrorCode` / `Status`), never exceptions.
 - The core may use `int32_t`, `uint32_t`, `uint16_t`, `uint8_t`, `enum class`,
   fixed arrays, and simple structs. Nothing else from Arduino.
@@ -209,9 +224,21 @@ Full rules: [docs/04-code-style.md](docs/04-code-style.md).
 - **Watchdog:** 2 s WDT; kick it once per loop. Clear `MCUSR` on boot to avoid a
   reset loop on some bootloaders.
 - **Do not inject `ConfigManager` into `NotchSensor`, `Button`, `Camera`,
-  `MotionController` or `ScannerController`.** Pass `config.input`,
-  `config.camera`, `config.motion` or `config.run`. Only `main.cpp` and
-  `CommandHandler` know `ConfigManager`.
+  `StepperMotionController` or `ScannerController`.** Each defines and stores
+  its own slice; `ConfigManager` pushes through `applyConfig`. Only `main.cpp`
+  and `CommandHandler` know `ConfigManager`.
+- **Do not put hardware effects in the state machine.** It has no enable, start,
+  stop or camera call. `ScannerController` runs the entry/exit actions.
+- **Do not put transition logic in `ScannerController`.** It translates inputs,
+  runs entry/exit actions and formats events; the pure machine owns the
+  sequence.
+- **Enabling the motor is inside `StepperMotionController`.** `ScannerController`
+  never touches `EN`, microsteps or current. The maintenance `ENABLE`/`DISABLE`
+  commands go through the controller to the motion interface.
+- **`SET` already applied the change.** `ConfigManager::set` pushes the new value
+  before it returns; `CommandHandler` must not re-apply it.
+- **There is no `ALIGN` state.** The stop and the offset are `STOPPING` and
+  `OFFSET`.
 - **Do not hide test cases in a loop.** A `TEST` with `for (value : values)` is
   one reported case and stops at the first fatal failure. Use `TEST_P` so every
   value is its own case (see
@@ -222,7 +249,8 @@ Full rules: [docs/04-code-style.md](docs/04-code-style.md).
 ## Where to start
 
 Follow [docs/11-implementation-plan.md](docs/11-implementation-plan.md) in order.
-It is written as small, testable milestones and is deliberately **core-first**:
-setup and shared types, then the state machine's collaborators, then the state
-machine, and only then the serial/config/HAL layer. Do not skip the native tests;
-they are the fastest way to validate the logic without the machine.
+It is deliberately **core-first and class by class**: setup, then the pure state
+machine, then one collaborator at a time (motion, notch, camera, button), then
+the orchestrator, config, parser, LED and HAL. Work one failing test at a time.
+Do not skip the native tests; they are the fastest way to validate the logic
+without the machine.

@@ -21,8 +21,8 @@ test without hardware.
 - **Dependency inversion.** Core depends on interfaces; HAL implements them.
 - **Narrow dependencies.** Take the smallest type that solves the problem. Do
   not pass a manager, facade or service locator when a value or a small config
-  struct is enough. A component needing debounce times takes `InputConfig`, not
-  `ConfigManager`.
+  struct is enough. A component needing debounce times defines and stores
+  `NotchConfig`, not `ConfigManager`.
 - **Composition over inheritance.** Inheritance is only for interface
   implementation.
 - **Errors are values.** Return `ErrorCode`/`Status`; never throw.
@@ -100,16 +100,13 @@ roughly 20–24 KB of 32 KB flash and 1.3–1.6 KB of 2 KB RAM.
 ## 4. Functions
 
 ```cpp
-// Good: one job, guard clause, no flag parameter.
-ErrorCode ScannerController::startRun() {
-  if (!canStart()) {
-    return ErrorCode::BUSY;
+// Good: one job, guard clause, no flag parameter, no hardware detail.
+ErrorCode ScannerController::startContinuousRun() {
+  const Result result = machine_.startContinuousRun();
+  if (result.error != ErrorCode::NONE) {
+    return result.error;
   }
-  clearError();
-  motion_.enable();
-  mode_ = Mode::RUN;
-  transitionTo(State::SEEK);
-  eventSink_.emit(Event{EventType::RUN_STARTED, 0, 0, 0});
+  applyTransition(result);   // entry/exit actions, counters, events
   return ErrorCode::NONE;
 }
 ```
@@ -140,9 +137,9 @@ Rules:
 - Keep headers self-contained.
 - Forward-declare where possible to reduce compile time.
 - Core headers must not include `Arduino.h`.
-- Components must not include `ConfigManager.h`. If a component needs config,
-  include `Config.h` and take only its slice (`InputConfig`, `CameraConfig`,
-  `MotionConfig`, `RunConfig` or `DriverConfig`).
+- `StateMachine.h` includes no project header; it owns its vocabulary.
+- Components must not include `ConfigManager.h`. Each consumer defines and stores
+  its own slice and exposes `applyConfig`; `ConfigManager` pushes into it.
 - Avoid macros except for compile-time build flags and pin definitions.
 
 ## 6. Error handling
@@ -287,7 +284,10 @@ Before committing, verify:
       or `digitalWrite` in core.
 - [ ] No `new`, `delete`, `malloc`, `String`, STL containers, exceptions.
 - [ ] Functions are small and named after intent.
-- [ ] No component includes `ConfigManager.h`; it takes only its config slice.
+- [ ] No component includes `ConfigManager.h`; it defines and stores its own
+      slice and exposes `applyConfig`.
+- [ ] `StateMachine.h` includes no project header.
+- [ ] States represent activities; the state machine returns facts, not actions.
 - [ ] A class does not receive a manager or facade when a value or slice suffices.
 - [ ] Every new behavior has a native test.
 - [ ] Error paths return an `ErrorCode` and are tested.
