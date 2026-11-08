@@ -40,6 +40,33 @@ Architecture decision records:
 The top-level [AGENTS.md](../AGENTS.md) is the entry point for implementing
 agents. [README.md](../README.md) is the human overview.
 
+## Checking documentation references
+
+Run the checker after editing the docs:
+
+```bash
+./scripts/check_docs.py
+```
+
+It checks every Markdown file outside `.git`, `.pio`, `.venv` and
+`node_modules` for:
+
+- relative links whose target does not exist,
+- `#anchor` fragments that do not match a heading (GitHub-style slug rules,
+  including `-1`, `-2` suffixes for duplicate headings),
+- unbalanced code fences.
+
+The command exits with status `0` when clean and `1` when it reports a problem.
+Pass files or directories to check a subset:
+
+```bash
+./scripts/check_docs.py docs/03-architecture.md docs/adr
+```
+
+The checker does not fetch external URLs and does not parse reference-style
+links or unusual link destinations. It is self-contained Python 3 and only uses
+the standard library.
+
 ## Conventions used in these docs
 
 - **MUST / MUST NOT** = required for correctness or safety.

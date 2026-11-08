@@ -109,6 +109,9 @@ pio run -e uno -t upload
 
 # Serial monitor (115200 8N1)
 pio device monitor -b 115200
+
+# Check Markdown links, anchors and code fences
+./scripts/check_docs.py
 ```
 
 Native tests must pass on a clean checkout before any hardware testing.
@@ -123,6 +126,8 @@ There is no CI workflow; run the commands locally.
 ├── AGENTS.md                  ← you are here
 ├── README.md                  ← human overview
 ├── platformio.ini             ← build environments (to be updated)
+├── scripts/
+│   └── check_docs.py          ← documentation reference checker
 ├── docs/                      ← the specification (source of truth)
 │   ├── adr/                   ← architecture decision records
 │   └── ...
@@ -191,6 +196,7 @@ Full rules: [docs/04-code-style.md](docs/04-code-style.md).
 
 - `pio run -e uno` compiles without warnings from project code.
 - `pio test -e native` passes.
+- `./scripts/check_docs.py` passes after documentation changes.
 - All commands in `docs/05-serial-protocol.md` behave as specified, including
   error codes and events.
 - The hardware acceptance checklist in [docs/09-testing.md](docs/09-testing.md)
@@ -243,6 +249,8 @@ Full rules: [docs/04-code-style.md](docs/04-code-style.md).
   one reported case and stops at the first fatal failure. Use `TEST_P` so every
   value is its own case (see
   [docs/09-testing.md §1.2](docs/09-testing.md#12-one-test-case-per-test)).
+- **Do not paste ad hoc Python reference checkers into the shell.** Run
+  `./scripts/check_docs.py`; it is the committed, documented checker for docs.
 
 ---
 

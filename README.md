@@ -96,6 +96,17 @@ pio device monitor -b 115200
 | [docs/12-glossary.md](docs/12-glossary.md) | Terms for non-experts |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 
+## Documentation checks
+
+After editing the docs, verify internal references with:
+
+```bash
+./scripts/check_docs.py
+```
+
+See [docs/README.md](docs/README.md#checking-documentation-references) for
+details.
+
 ## Safety
 
 - Use the 12 V supply for the motor; never power the motor from the Arduino 5 V.
