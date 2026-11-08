@@ -129,6 +129,21 @@ There is no CI workflow; run the commands locally.
 
 ---
 
+## Inspecting files
+
+Look things up with the dedicated tools, not with shell text-processing
+pipelines:
+
+- Use `read` with `offset` / `limit` to get specific lines of a file. Do not
+  reach for `sed -n`, `head`, `tail`, `cat` or `awk` for that.
+- Use `grep` to search file contents and `glob` to find paths. Do not pipe
+  their output through `sed` to indent or otherwise decorate it.
+- `sed` is a last resort and may only print. Never change files from the shell:
+  no `sed -i`, no `sed 'w …'`, no `>` redirects. Every file change goes through
+  `edit` / `write`, so it is visible as a diff and can be reviewed.
+
+---
+
 ## Coding rules (summary)
 
 - Clean Code in the Uncle Bob sense: small functions, one level of abstraction,
