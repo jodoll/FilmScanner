@@ -13,8 +13,8 @@ collaborator at a time, and only then the configuration, serial and HAL layers.
   conventions are in [09-testing.md §1](09-testing.md#1-strategy); follow them.
 - Review after each step. A milestone is done when its acceptance line passes
   and its behavior has direct tests.
-- The docs are the source of truth. If a behavior is ambiguous, resolve it in
-  the docs first.
+- The docs are the source of truth. Do not edit them without explicit approval.
+  If a behavior is missing or ambiguous, propose the doc change and wait.
 - Keep `lib/scanner_core/` free of `Arduino.h`.
 - Do not extend the prototype in `src/main.cpp`; replace it.
 - Do not inject `ConfigManager` into a component. Each consumer defines and

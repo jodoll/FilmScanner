@@ -39,6 +39,26 @@ Use [docs/12-glossary.md](docs/12-glossary.md) when a term is unclear.
 
 ---
 
+## Documentation changes
+
+The docs are the source of truth, and they are changed deliberately.
+
+- Do not edit anything under `docs/` or this file without explicit approval.
+- If a rule, name or behavior is missing, ambiguous, or contradicts the code,
+  stop and report:
+  1. the exact gap or contradiction,
+  2. the options you see,
+  3. the specific doc change you recommend (file and section).
+- Wait for approval before changing the doc and before implementing the
+  affected behavior.
+- Never encode an unapproved decision in code, a comment, a test name or a
+  prompt. Do not invent a local variant.
+- Once approved, update the doc first, then the code, in the same change or a
+  preceding commit.
+- You may continue with unrelated, unambiguous work while waiting.
+
+---
+
 ## Non-negotiable design decisions
 
 These were agreed with the project owner. Do not change them without updating
