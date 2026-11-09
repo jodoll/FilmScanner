@@ -78,8 +78,6 @@ struct Result {
 // Pure activity state machine. No clock, config, hardware or protocol types.
 class StateMachine {
  public:
-  void begin();
-
   Result bootCompleted();
 
   Result startContinuousRun();
@@ -101,6 +99,12 @@ class StateMachine {
   Mode mode() const;
   bool stopRequested() const;
   ErrorCode lastError() const;
+
+ private:
+  State state_ = State::BOOT;
+  Mode mode_ = Mode::NONE;
+  bool stopRequested_ = false;
+  ErrorCode lastError_ = ErrorCode::NONE;
 };
 
 }  // namespace scanner
