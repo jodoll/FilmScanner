@@ -14,5 +14,17 @@ TEST(StateMachineBoot, StartsInBoot) {
   EXPECT_EQ(machine.lastError(), ErrorCode::NONE);
 }
 
+TEST(StateMachineBoot, MovesFromBootToIdle) {
+  StateMachine machine;
+
+  const Result result = machine.bootCompleted();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
 }  // namespace
 }  // namespace scanner
