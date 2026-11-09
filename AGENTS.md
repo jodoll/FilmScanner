@@ -222,6 +222,34 @@ Full rules: [docs/04-code-style.md](docs/04-code-style.md).
 
 ---
 
+## Commits
+
+Never commit without asking. A commit is due when the user asks for one, or
+when the active workflow or skill (for example the Core TDD skill) says the
+current unit is ready.
+
+1. Finish the current logical unit and run the checks that apply to it.
+2. Inspect `git status --short` and `git diff` (and `git diff --cached` when
+   something is already staged).
+3. Ask with the `question` tool for the scope and the message. Propose the
+   changed files as the default scope and one Conventional Commit message in
+   the style of
+   [docs/11-implementation-plan.md §15](docs/11-implementation-plan.md#15-suggested-commit-sequence).
+   Skip the question only when the user already supplied both the exact files
+   and the exact message.
+4. Run `git add <chosen files>` and `git commit -m "<chosen message>"`. The
+   `ask` rule on `git commit *` is the final approval gate.
+5. Never push, never use `--no-verify`, and never edit the permission rules to
+   bypass the gate. If the user rejects, stop and report.
+
+"Commit before we continue" means: ask and commit in the same run, then
+continue. Do not end the turn to wait for a new prompt.
+
+`question` is denied for the `general` subagent, so keep commit handling in
+the main session.
+
+---
+
 ## Definition of done
 
 - `pio run -e uno` compiles without warnings from project code.

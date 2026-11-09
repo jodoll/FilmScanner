@@ -43,16 +43,25 @@ they ever differ, that document wins.
 5. **Refactor** with the test green. The test stays as the specification.
 6. **Check the target.** `pio run -e uno` proves the core still compiles as
    C++11 for AVR; the native build uses C++17 and will not catch that.
-7. **Stop before git.** Do not run `git add`, `git commit` or `git push`.
-   Instead, report the changed files, propose one Conventional Commit message in
-   the style of `docs/11-implementation-plan.md` §15, and show the exact
-   command:
+7. **Commit the cycle.** Once `pio test -e native` is green and
+   `pio run -e uno` is clean, always initiate the commit with the `question`
+   tool; do not wait for the user to ask for a commit. Ask in one call for:
+   - the scope: the files changed in this red-green loop (default) or all
+     changed files;
+   - the message: one Conventional Commit message in the style of
+     `docs/11-implementation-plan.md` §15, or a free-form message.
 
-   ```bash
-   git add <changed files> && git commit -m "feat(core): ..."
-   ```
-
-   Wait for the user to approve or run it.
+   Then run `git add <chosen files>` and `git commit -m "<chosen message>"`.
+   The `ask` rule on `git commit *` is the final approval gate. Never push.
+   If the user rejects, stop and report; do not bypass the gate. The general
+   rule is in `AGENTS.md` § Commits.
+8. **Ask about the next cycle.** After the commit succeeds, ask with the
+   `question` tool whether to start the next red-green cycle. Offer the
+   concrete next behavior you propose as the first option (with its doc
+   reference when there is one) and a "Stop here" option; the tool's
+   free-form answer lets the user type a different behavior. If they accept
+   the proposal or type one, run the loop again with that behavior. If they
+   stop, report and end the step.
 
 One behavior per loop. Do not batch tests, and do not batch code.
 
@@ -126,7 +135,9 @@ pio run -e uno                                      # C++11 / AVR check
 - `pio run -e uno` is clean, with no warnings from project code.
 - No `Arduino.h`, heap, exceptions, RTTI, STL container or `String` in the core.
 - No behavior that the docs do not state.
-- Nothing is staged or committed; a commit message and command are proposed.
+- The cycle was committed after the `question` scope/message answer and the
+  `git commit` permission approval, or the user declined.
+- The next-cycle `question` was asked after the commit.
 
 ## Pitfalls
 
