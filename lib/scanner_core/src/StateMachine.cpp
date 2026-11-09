@@ -15,6 +15,13 @@ Result StateMachine::startContinuousRun() {
           static_cast<uint16_t>(Announcement::RUN_STARTED)};
 }
 
+Result StateMachine::scanOneFrame() {
+  state_ = State::SEEK;
+  mode_ = Mode::SINGLE;
+  return {state_, ErrorCode::NONE, StopReason::NONE,
+          static_cast<uint16_t>(Announcement::NONE)};
+}
+
 State StateMachine::state() const { return state_; }
 
 Mode StateMachine::mode() const { return mode_; }

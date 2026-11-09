@@ -41,5 +41,19 @@ TEST(StateMachineStart, ContinuousRunEntersSeekInRunMode) {
             static_cast<uint16_t>(Announcement::RUN_STARTED));
 }
 
+TEST(StateMachineStart, SingleFrameEntersSeekInSingleMode) {
+  StateMachine machine;
+  machine.bootCompleted();
+
+  const Result result = machine.scanOneFrame();
+
+  ASSERT_EQ(result.state, State::SEEK);
+  EXPECT_EQ(machine.state(), State::SEEK);
+  EXPECT_EQ(machine.mode(), Mode::SINGLE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
 }  // namespace
 }  // namespace scanner
