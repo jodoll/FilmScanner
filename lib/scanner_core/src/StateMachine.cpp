@@ -29,6 +29,13 @@ Result StateMachine::shootCurrentFrame() {
           static_cast<uint16_t>(Announcement::NONE)};
 }
 
+Result StateMachine::jog() {
+  state_ = State::JOG;
+  mode_ = Mode::NONE;
+  return {state_, ErrorCode::NONE, StopReason::NONE,
+          static_cast<uint16_t>(Announcement::NONE)};
+}
+
 State StateMachine::state() const { return state_; }
 
 Mode StateMachine::mode() const { return mode_; }

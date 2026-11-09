@@ -69,5 +69,19 @@ TEST(StateMachineShoot, CurrentFrameEntersCameraInShootMode) {
   EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
 }
 
+TEST(StateMachineJog, EntersJogWithoutMode) {
+  StateMachine machine;
+  machine.bootCompleted();
+
+  const Result result = machine.jog();
+
+  ASSERT_EQ(result.state, State::JOG);
+  EXPECT_EQ(machine.state(), State::JOG);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
 }  // namespace
 }  // namespace scanner
