@@ -445,7 +445,9 @@ method. The `StatusLed` is driven separately by `main` with `state()`.
 ### 7.4 `StateMachine`
 
 - Pure C++11; includes only its own vocabulary header.
-- `begin()` leaves the machine in `BOOT`; `bootCompleted()` enters `IDLE`.
+- A new machine is in `BOOT`, mode `NONE`, with no stop request and no error. It
+  stays there until controller start-up completes; `bootCompleted()` then enters
+  `IDLE`.
 - One method per event; see §6.1.
 - Holds `State`, `Mode`, `stopRequested` and `lastError`. It holds no counters.
 - `Result` carries the new state, the error, the stop reason and the
