@@ -26,5 +26,20 @@ TEST(StateMachineBoot, MovesFromBootToIdle) {
   EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
 }
 
+TEST(StateMachineStart, ContinuousRunEntersSeekInRunMode) {
+  StateMachine machine;
+  machine.bootCompleted();
+
+  const Result result = machine.startContinuousRun();
+
+  ASSERT_EQ(result.state, State::SEEK);
+  EXPECT_EQ(machine.state(), State::SEEK);
+  EXPECT_EQ(machine.mode(), Mode::RUN);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::RUN_STARTED));
+}
+
 }  // namespace
 }  // namespace scanner
