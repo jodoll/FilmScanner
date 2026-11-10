@@ -15,6 +15,18 @@
     { "action": "edit", "resource": "$HOME/.config/git/*", "effect": "deny" },
     { "action": "edit", "resource": "/etc/gitconfig", "effect": "deny" },
     { "action": "edit", "resource": "/usr/local/etc/gitconfig", "effect": "deny" },
-    { "action": "edit", "resource": "/opt/homebrew/etc/gitconfig", "effect": "deny" }
+    { "action": "edit", "resource": "/opt/homebrew/etc/gitconfig", "effect": "deny" },
+
+    // The agent must not edit its own policy: config hot-reloads on save.
+    { "action": "edit", "resource": "opencode.json*", "effect": "deny" },
+    { "action": "edit", "resource": ".opencode/*", "effect": "deny" },
+
+    // Instructions, the spec, and review visibility.
+    { "action": "edit", "resource": "AGENTS.md", "effect": "ask" },
+    { "action": "edit", "resource": "docs/*", "effect": "ask" },
+    { "action": "edit", "resource": ".gitattributes", "effect": "ask" },
+    { "action": "edit", "resource": ".gitignore", "effect": "ask" },
+    { "action": "edit", "resource": "scripts/*", "effect": "ask" },
+    { "action": "edit", "resource": "platformio.ini", "effect": "ask" }
   ]
 }
