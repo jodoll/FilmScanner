@@ -55,13 +55,13 @@ they ever differ, that document wins.
    The `ask` rule on `git commit *` is the final approval gate. Never push.
    If the user rejects, stop and report; do not bypass the gate. The general
    rule is in `AGENTS.md` § Commits.
-8. **Ask about the next cycle.** After the commit succeeds, ask with the
-   `question` tool whether to start the next red-green cycle. Offer the
-   concrete next behavior you propose as the first option (with its doc
-   reference when there is one) and a "Stop here" option; the tool's
-   free-form answer lets the user type a different behavior. If they accept
-   the proposal or type one, run the loop again with that behavior. If they
-   stop, report and end the step.
+8. **Offer the next cycle.** After the commit succeeds, do not use the
+   `question` tool. Ask in your final message whether to start the next
+   red-green cycle. Name the concrete next behavior you propose, with its doc
+   reference when there is one; when several are plausible, list them as
+   options. The user answers with a normal prompt: accept the proposal or name
+   a different behavior. If they accept or name one, run the loop again with
+   that behavior.
 
 One behavior per loop. Do not batch tests, and do not batch code.
 
@@ -137,7 +137,8 @@ pio run -e uno                                      # C++11 / AVR check
 - No behavior that the docs do not state.
 - The cycle was committed after the `question` scope/message answer and the
   `git commit` permission approval, or the user declined.
-- The next-cycle `question` was asked after the commit.
+- The next cycle was offered in the final message after the commit, not with
+  the `question` tool.
 
 ## Pitfalls
 
