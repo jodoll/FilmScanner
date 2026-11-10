@@ -23,8 +23,8 @@ test without hardware.
   not pass a manager, facade or service locator when a value or a small config
   struct is enough. A component needing debounce times defines and stores
   `NotchConfig`, not `ConfigManager`.
-- **Composition over inheritance.** Inheritance is only for interface
-  implementation.
+- **Composition over inheritance.** Prefer composition; use inheritance only when
+  it models a genuine is-a relationship and is better suited for that case.
 - **Errors are values.** Return `ErrorCode`/`Status`; never throw.
 - **No magic numbers.** Put tunables in `Config`; put physical constants in a
   named `constexpr`.

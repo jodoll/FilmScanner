@@ -221,8 +221,8 @@ transition list. `CAMERA` internally steps through `SETTLE`, `FOCUS`, `SHUTTER`,
 
 ### 6.1 Events and transitions
 
-There is no event enum; each event is a method. `Result.announcements` lists the
-protocol facts the orchestrator must emit.
+Each event is a method. `Result.announcements` lists the protocol facts the
+orchestrator must emit.
 
 | Current | Method | Guard | Next | Announcements |
 |---|---|---|---|---|

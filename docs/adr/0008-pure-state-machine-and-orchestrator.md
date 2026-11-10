@@ -49,8 +49,8 @@ them. `JOG` is a state, not a mode.
 
 ### One method per event
 
-There is no event enum. Each event is a method whose signature fits it, and the
-declarations live in `StateMachine.h`:
+The machine is driven through one method per event. Each signature fits its
+event, and the declarations live in `StateMachine.h`:
 
 - commands: `startContinuousRun`, `scanOneFrame`, `shootCurrentFrame`, `jog`,
   `stop`, `abort`, plus `bootCompleted` for the end of initialisation;
