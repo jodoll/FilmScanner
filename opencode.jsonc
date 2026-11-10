@@ -10,6 +10,14 @@
     // Edits are free inside the project...
     { "action": "edit", "resource": "*", "effect": "allow" },
 
+    // Reading the project is free; external paths still hit the
+    // external_directory rule above.
+    { "action": "read", "resource": "*", "effect": "allow" },
+
+    // ...except environment files, which keep the built-in guard.
+    { "action": "read", "resource": "*.env*", "effect": "ask" },
+    { "action": "read", "resource": "*.env.example", "effect": "allow" },
+
     // ...except git's machinery, which must stay human-owned. These repeat the
     // global denies because this file's allow would otherwise win by rule order.
     { "action": "edit", "resource": "*.git", "effect": "deny" },

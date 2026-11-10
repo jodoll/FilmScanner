@@ -16,6 +16,7 @@ trade-off about *when* that prompt happens.
 | What | When the human sees it | Rule |
 | --- | --- | --- |
 | Implementation code (`lib/`, `src/`, `test/`) | at execution: when the code runs, if it runs | free edit |
+| Reads (`read`) | never inside the project; at execution outside it | `allow` (`.env*` and external paths `ask`) |
 | Instructions and the spec (`AGENTS.md`, `PERMISSIONS.md`, `docs/`, everything under `.opencode/` except plugins) | at edit | `ask` |
 | Shell commands | at execution | `ask` (git reads are free) |
 | Policy (`opencode.jsonc`) | at edit | `ask` |
@@ -82,8 +83,12 @@ permanently, without ever prompting again.
 ## Operating rules
 
 **Last matching rule wins.** Rules are evaluated in order and the last match
-applies, so `edit allow *` comes first and every `ask` and `deny` follows it.
-Keep that order when editing the file.
+applies, so `edit allow *` and `read allow *` come first and every `ask` and
+`deny` follows them. Keep that order when editing the file.
+
+**`glob` and `grep` cannot be path-scoped.** Their rules are keyed on the glob
+pattern and the regular expression, not on a path, so allowing them would allow
+searches anywhere the process can reach. They stay on `ask`.
 
 **`deny` cannot be approved.** `ask` can. That is the only hard distinction;
 everything else is a question of where the prompt appears.
