@@ -185,6 +185,9 @@ pipelines:
   reach for `sed -n`, `head`, `tail`, `cat` or `awk` for that.
 - Use `grep` to search file contents and `glob` to find paths. Do not pipe
   their output through `sed` to indent or otherwise decorate it.
+- Use `read` on a directory to list its entries, or `glob` to match paths. Do
+  not shell out to `ls`, `find` or `tree`: the dedicated tools carry the path
+  and permission rules, and shelling out either prompts or bypasses them.
 - `sed` is a last resort and may only print. Never change files from the shell:
   no `sed -i`, no `sed 'w …'`, no `>` redirects. Every file change goes through
   `edit` / `write`, so it is visible as a diff and can be reviewed.
