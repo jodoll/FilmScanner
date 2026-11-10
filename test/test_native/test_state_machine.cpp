@@ -99,20 +99,28 @@ StateMachine inJog() {
   return machine;
 }
 
+StateMachine inCamera() {
+  StateMachine machine;
+  machine.bootCompleted();
+  machine.shootCurrentFrame();
+  return machine;
+}
+
 struct StartRejectionCase {
+  const char* name;
   State expectedState;
   Mode expectedMode;
+  Result (StateMachine::*event)();
   StateMachine (*makeMachine)();
 };
 
-class ContinuousRunRejection
-    : public ::testing::TestWithParam<StartRejectionCase> {};
+class StartRejection : public ::testing::TestWithParam<StartRejectionCase> {};
 
-TEST_P(ContinuousRunRejection, ReturnsBusyAndLeavesStateUnchanged) {
+TEST_P(StartRejection, ReturnsBusyAndLeavesStateUnchanged) {
   const StartRejectionCase testCase = GetParam();
   StateMachine machine = testCase.makeMachine();
 
-  const Result result = machine.startContinuousRun();
+  const Result result = (machine.*testCase.event)();
 
   ASSERT_EQ(result.error, ErrorCode::BUSY);
   EXPECT_EQ(result.state, testCase.expectedState);
@@ -123,10 +131,27 @@ TEST_P(ContinuousRunRejection, ReturnsBusyAndLeavesStateUnchanged) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    UnlistedStates, ContinuousRunRejection,
-    ::testing::Values(StartRejectionCase{State::BOOT, Mode::NONE, &inBoot},
-                      StartRejectionCase{State::SEEK, Mode::RUN, &inSeek},
-                      StartRejectionCase{State::JOG, Mode::NONE, &inJog}));
+    UnlistedStates, StartRejection,
+    ::testing::Values(
+        StartRejectionCase{"ContinuousRunFromBoot", State::BOOT, Mode::NONE,
+                           &StateMachine::startContinuousRun, &inBoot},
+        StartRejectionCase{"ContinuousRunFromSeek", State::SEEK, Mode::RUN,
+                           &StateMachine::startContinuousRun, &inSeek},
+        StartRejectionCase{"ContinuousRunFromJog", State::JOG, Mode::NONE,
+                           &StateMachine::startContinuousRun, &inJog},
+        StartRejectionCase{"ContinuousRunFromCamera", State::CAMERA, Mode::SHOOT,
+                           &StateMachine::startContinuousRun, &inCamera},
+        StartRejectionCase{"ScanOneFrameFromBoot", State::BOOT, Mode::NONE,
+                           &StateMachine::scanOneFrame, &inBoot},
+        StartRejectionCase{"ScanOneFrameFromSeek", State::SEEK, Mode::RUN,
+                           &StateMachine::scanOneFrame, &inSeek},
+        StartRejectionCase{"ScanOneFrameFromCamera", State::CAMERA, Mode::SHOOT,
+                           &StateMachine::scanOneFrame, &inCamera},
+        StartRejectionCase{"ScanOneFrameFromJog", State::JOG, Mode::NONE,
+                           &StateMachine::scanOneFrame, &inJog}),
+    [](const ::testing::TestParamInfo<StartRejectionCase>& info) {
+      return info.param.name;
+    });
 
 }  // namespace
 }  // namespace scanner

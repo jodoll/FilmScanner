@@ -21,6 +21,11 @@ Result StateMachine::startContinuousRun() {
 }
 
 Result StateMachine::scanOneFrame() {
+  if (state_ != State::IDLE) {
+    return {state_, ErrorCode::BUSY, StopReason::NONE,
+            static_cast<uint16_t>(Announcement::NONE)};
+  }
+
   state_ = State::SEEK;
   mode_ = Mode::SINGLE;
   return {state_, ErrorCode::NONE, StopReason::NONE,
