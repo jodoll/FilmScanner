@@ -33,6 +33,11 @@ Result StateMachine::scanOneFrame() {
 }
 
 Result StateMachine::shootCurrentFrame() {
+  if (state_ != State::IDLE) {
+    return {state_, ErrorCode::BUSY, StopReason::NONE,
+            static_cast<uint16_t>(Announcement::NONE)};
+  }
+
   state_ = State::CAMERA;
   mode_ = Mode::SHOOT;
   return {state_, ErrorCode::NONE, StopReason::NONE,
@@ -40,6 +45,11 @@ Result StateMachine::shootCurrentFrame() {
 }
 
 Result StateMachine::jog() {
+  if (state_ != State::IDLE) {
+    return {state_, ErrorCode::BUSY, StopReason::NONE,
+            static_cast<uint16_t>(Announcement::NONE)};
+  }
+
   state_ = State::JOG;
   mode_ = Mode::NONE;
   return {state_, ErrorCode::NONE, StopReason::NONE,
