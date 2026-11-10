@@ -9,6 +9,11 @@ Result StateMachine::bootCompleted() {
 }
 
 Result StateMachine::startContinuousRun() {
+  if (state_ != State::IDLE && state_ != State::FAULT) {
+    return {state_, ErrorCode::BUSY, StopReason::NONE,
+            static_cast<uint16_t>(Announcement::NONE)};
+  }
+
   state_ = State::SEEK;
   mode_ = Mode::RUN;
   return {state_, ErrorCode::NONE, StopReason::NONE,

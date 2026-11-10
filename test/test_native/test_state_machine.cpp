@@ -83,5 +83,50 @@ TEST(StateMachineJog, EntersJogWithoutMode) {
   EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
 }
 
+StateMachine inBoot() { return StateMachine{}; }
+
+StateMachine inSeek() {
+  StateMachine machine;
+  machine.bootCompleted();
+  machine.startContinuousRun();
+  return machine;
+}
+
+StateMachine inJog() {
+  StateMachine machine;
+  machine.bootCompleted();
+  machine.jog();
+  return machine;
+}
+
+struct StartRejectionCase {
+  State expectedState;
+  Mode expectedMode;
+  StateMachine (*makeMachine)();
+};
+
+class ContinuousRunRejection
+    : public ::testing::TestWithParam<StartRejectionCase> {};
+
+TEST_P(ContinuousRunRejection, ReturnsBusyAndLeavesStateUnchanged) {
+  const StartRejectionCase testCase = GetParam();
+  StateMachine machine = testCase.makeMachine();
+
+  const Result result = machine.startContinuousRun();
+
+  ASSERT_EQ(result.error, ErrorCode::BUSY);
+  EXPECT_EQ(result.state, testCase.expectedState);
+  EXPECT_EQ(machine.state(), testCase.expectedState);
+  EXPECT_EQ(machine.mode(), testCase.expectedMode);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    UnlistedStates, ContinuousRunRejection,
+    ::testing::Values(StartRejectionCase{State::BOOT, Mode::NONE, &inBoot},
+                      StartRejectionCase{State::SEEK, Mode::RUN, &inSeek},
+                      StartRejectionCase{State::JOG, Mode::NONE, &inJog}));
+
 }  // namespace
 }  // namespace scanner
