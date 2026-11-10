@@ -47,7 +47,7 @@ enum class ErrorCode : uint8_t {
   DRIVER_UART,
   EEPROM_INVALID,
   CONFIG_INVALID,
-  INTERNAL
+  INTERNAL_ERROR  // wire name INTERNAL
 };
 
 // Semantic facts, not actions. ScannerController maps them to protocol events.
@@ -76,8 +76,15 @@ struct Result {
 };
 
 // Pure activity state machine. No clock, config, hardware or protocol types.
+namespace detail {
+class StateHandler;
+struct Transition;
+}  // namespace detail
+
 class StateMachine {
  public:
+  StateMachine();
+
   Result bootCompleted();
 
   Result startContinuousRun();
@@ -101,7 +108,9 @@ class StateMachine {
   ErrorCode lastError() const;
 
  private:
-  State state_ = State::BOOT;
+  Result apply(const detail::Transition& transition);
+
+  const detail::StateHandler* current_;
   Mode mode_ = Mode::NONE;
   bool stopRequested_ = false;
   ErrorCode lastError_ = ErrorCode::NONE;
