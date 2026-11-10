@@ -14,6 +14,7 @@ void setup()
   machine.startContinuousRun();
   machine.bootCompleted();
   machine.startContinuousRun();
+  machine.notchDetected();
 }
 
 void loop()

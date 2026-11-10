@@ -18,10 +18,10 @@ class BootState : public StateHandler {
 class IdleState : public StateHandler {
  public:
   IdleState() : StateHandler(State::IDLE) {}
-  Transition on(EventId event) const override;
+  Transition on(EventId event, StateView) const override;
 };
 
-Transition IdleState::on(EventId event) const {
+Transition IdleState::on(EventId event, StateView) const {
   switch (event) {
     case EventId::START_RUN:
       return accept(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
@@ -45,7 +45,17 @@ Transition IdleState::on(EventId event) const {
 class SeekState : public StateHandler {
  public:
   SeekState() : StateHandler(State::SEEK) {}
+  Transition on(EventId event, StateView view) const override;
 };
+
+Transition SeekState::on(EventId event, StateView view) const {
+  switch (event) {
+    case EventId::NOTCH:
+      return accept(State::STOPPING, view.mode, Announcement::NOTCH);
+    default:
+      return reject();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // STOPPING
@@ -85,10 +95,10 @@ class JogState : public StateHandler {
 class FaultState : public StateHandler {
  public:
   FaultState() : StateHandler(State::FAULT) {}
-  Transition on(EventId event) const override;
+  Transition on(EventId event, StateView) const override;
 };
 
-Transition FaultState::on(EventId event) const {
+Transition FaultState::on(EventId event, StateView) const {
   switch (event) {
     case EventId::START_RUN:
       return accept(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,

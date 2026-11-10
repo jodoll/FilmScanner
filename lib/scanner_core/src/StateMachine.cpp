@@ -4,6 +4,14 @@
 
 namespace scanner {
 
+namespace {
+
+detail::StateView stateView(Mode mode, bool stopRequested) {
+  return {mode, stopRequested};
+}
+
+}  // namespace
+
 StateMachine::StateMachine() : current_(detail::stateFor(State::BOOT)) {}
 
 Result StateMachine::bootCompleted() {
@@ -13,19 +21,28 @@ Result StateMachine::bootCompleted() {
 }
 
 Result StateMachine::startContinuousRun() {
-  return apply(current_->on(detail::EventId::START_RUN));
+  return apply(current_->on(detail::EventId::START_RUN,
+                            stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::scanOneFrame() {
-  return apply(current_->on(detail::EventId::SCAN_ONE));
+  return apply(current_->on(detail::EventId::SCAN_ONE,
+                            stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::shootCurrentFrame() {
-  return apply(current_->on(detail::EventId::SHOOT));
+  return apply(current_->on(detail::EventId::SHOOT,
+                            stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::jog() {
-  return apply(current_->on(detail::EventId::JOG));
+  return apply(current_->on(detail::EventId::JOG,
+                            stateView(mode_, stopRequested_)));
+}
+
+Result StateMachine::notchDetected() {
+  return apply(current_->on(detail::EventId::NOTCH,
+                            stateView(mode_, stopRequested_)));
 }
 
 State StateMachine::state() const { return current_->id(); }

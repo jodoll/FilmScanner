@@ -106,6 +106,19 @@ StateMachine inCamera() {
   return machine;
 }
 
+TEST(StateMachineSeek, NotchDetectedEntersStopping) {
+  StateMachine machine = inSeek();
+
+  const Result result = machine.notchDetected();
+
+  ASSERT_EQ(result.state, State::STOPPING);
+  EXPECT_EQ(machine.state(), State::STOPPING);
+  EXPECT_EQ(machine.mode(), Mode::RUN);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NOTCH));
+}
+
 struct StartRejectionCase {
   const char* name;
   State expectedState;

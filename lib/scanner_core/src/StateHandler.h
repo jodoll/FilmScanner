@@ -11,12 +11,18 @@ enum class EventId : uint8_t {
   START_RUN,
   SCAN_ONE,
   SHOOT,
-  JOG
+  JOG,
+  NOTCH
 };
 
 enum class ErrorAction : uint8_t {
   KEEP,
   CLEAR
+};
+
+struct StateView {
+  Mode mode;
+  bool stopRequested;
 };
 
 struct Transition {
@@ -34,7 +40,7 @@ class StateHandler {
  public:
   State id() const { return id_; }
 
-  virtual Transition on(EventId) const { return reject(); }
+  virtual Transition on(EventId, StateView) const { return reject(); }
 
  protected:
   explicit StateHandler(State id) : id_(id) {}
