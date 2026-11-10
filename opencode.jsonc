@@ -4,6 +4,9 @@
     // Anything outside this project prompts first, whether read or edit.
     { "action": "external_directory", "resource": "*", "effect": "ask" },
 
+    // Structured questions to the human are free.
+    { "action": "question", "resource": "*", "effect": "allow" },
+
     // Edits are free inside the project...
     { "action": "edit", "resource": "*", "effect": "allow" },
 
@@ -17,12 +20,18 @@
     { "action": "edit", "resource": "/usr/local/etc/gitconfig", "effect": "deny" },
     { "action": "edit", "resource": "/opt/homebrew/etc/gitconfig", "effect": "deny" },
 
-    // The agent must not edit its own policy: config hot-reloads on save.
-    { "action": "edit", "resource": "opencode.json*", "effect": "deny" },
-    { "action": "edit", "resource": ".opencode/*", "effect": "deny" },
+    // The agent may propose policy changes; each one prompts.
+    { "action": "edit", "resource": "opencode.json*", "effect": "ask" },
+
+    // Skills, commands, tools and agents prompt too.
+    { "action": "edit", "resource": ".opencode/*", "effect": "ask" },
+
+    // Plugins run at startup with no execution prompt; keep them out.
+    { "action": "edit", "resource": ".opencode/plugin/*", "effect": "deny" },
 
     // Instructions, the spec, and review visibility.
     { "action": "edit", "resource": "AGENTS.md", "effect": "ask" },
+    { "action": "edit", "resource": "PERMISSIONS.md", "effect": "ask" },
     { "action": "edit", "resource": "docs/*", "effect": "ask" },
     { "action": "edit", "resource": ".gitattributes", "effect": "ask" },
     { "action": "edit", "resource": ".gitignore", "effect": "ask" },
