@@ -237,7 +237,7 @@ current unit is ready.
 3. Ask with the `question` tool for the scope and the message. Propose the
    changed files as the default scope and one Conventional Commit message in
    the style of
-   [docs/11-implementation-plan.md §15](docs/11-implementation-plan.md#15-suggested-commit-sequence).
+   [CONTRIBUTING.md § Commit messages](CONTRIBUTING.md#commit-messages).
    Skip the question only when the user already supplied both the exact files
    and the exact message.
 4. Run `git add <chosen files>` and `git commit -m "<chosen message>"`. The

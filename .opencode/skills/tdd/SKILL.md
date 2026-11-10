@@ -49,7 +49,7 @@ they ever differ, that document wins.
    - the scope: the files changed in this red-green loop (default) or all
      changed files;
    - the message: one Conventional Commit message in the style of
-     `docs/11-implementation-plan.md` §15, or a free-form message.
+     `CONTRIBUTING.md` § Commit messages, or a free-form message.
 
    Then run `git add <chosen files>` and `git commit -m "<chosen message>"`.
    The `ask` rule on `git commit *` is the final approval gate. Never push.

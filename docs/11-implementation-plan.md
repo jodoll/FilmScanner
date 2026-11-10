@@ -333,23 +333,7 @@ Follow [08-calibration.md](08-calibration.md) completely.
   [01-requirements.md §9](01-requirements.md#9-acceptance-criteria) pass.
 - `pio run -e uno` and `pio test -e native` pass on a clean checkout.
 
-## 15. Suggested commit sequence
-
-1. `build: switch to TMCStepper + AccelStepper + GoogleTest`
-2. `feat(core): pure activity state machine`
-3. `feat(core): motion interface and stepper implementation`
-4. `feat(core): notch sensor`
-5. `feat(core): camera`
-6. `feat(core): button`
-7. `feat(core): scanner controller orchestration`
-8. `feat(core): config aggregate, persistence and push`
-9. `feat(core): command parser`
-10. `feat(core): status led`
-11. `feat(hal): adapters and composition root`
-12. `feat(proto): serial command handler`
-13. `docs: calibration and acceptance results`
-
-## 16. Risks and mitigations
+## 15. Risks and mitigations
 
 | Risk | Mitigation |
 |---|---|
@@ -368,7 +352,7 @@ Follow [08-calibration.md](08-calibration.md) completely.
 | State-machine assumptions drift | The pure machine's transition tests are the contract; the orchestrator never re-implements them |
 | `OFFSET` with zero offset | The controller reports `motionCompleted()` immediately on entry |
 
-## 17. Definition of done (repeated)
+## 16. Definition of done (repeated)
 
 - All native tests pass.
 - All hardware acceptance criteria pass.

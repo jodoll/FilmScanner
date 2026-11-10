@@ -96,6 +96,8 @@ pio device monitor -b 115200
 | [docs/12-glossary.md](docs/12-glossary.md) | Terms for non-experts |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 
+Commit conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Documentation checks
 
 After editing the docs, verify internal references with:
