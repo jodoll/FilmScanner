@@ -17,6 +17,7 @@ firmware. Read in this order:
 | 10 | [Troubleshooting](10-troubleshooting.md) | Symptom → cause → action |
 | 11 | [Implementation plan](11-implementation-plan.md) | Core-first, class-by-class milestones |
 | 12 | [Glossary](12-glossary.md) | Terms used in the docs |
+| 13 | [Sandboxed agent environment](13-sandbox.md) | Agent microVM, toolchain image, reset and daily workflow |
 
 Wiring diagram:
 
@@ -37,6 +38,7 @@ Architecture decision records:
 - [ADR-0008 — Pure activity state machine and orchestrator](adr/0008-pure-state-machine-and-orchestrator.md)
 - [ADR-0009 — Motion controller interface](adr/0009-motion-controller-interface.md)
 - [ADR-0010 — The persistence record is a separate representation](adr/0010-persistence-record-is-a-separate-representation.md)
+- [ADR-0011 — Sandboxed agent development](adr/0011-sandboxed-agent-development.md)
 
 The top-level [AGENTS.md](../AGENTS.md) is the entry point for implementing
 agents. [README.md](../README.md) is the human overview.

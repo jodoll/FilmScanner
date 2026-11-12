@@ -94,6 +94,7 @@ pio device monitor -b 115200
 | [docs/10-troubleshooting.md](docs/10-troubleshooting.md) | Symptom → cause → fix |
 | [docs/11-implementation-plan.md](docs/11-implementation-plan.md) | Ordered implementation milestones |
 | [docs/12-glossary.md](docs/12-glossary.md) | Terms for non-experts |
+| [docs/13-sandbox.md](docs/13-sandbox.md) | Sandboxed agent environment and daily workflow |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 
 Commit conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
