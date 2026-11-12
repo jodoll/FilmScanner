@@ -14,7 +14,8 @@ enum class EventId : uint8_t {
   JOG,
   NOTCH,
   MOTION_COMPLETED,
-  PICTURE_TAKEN
+  PICTURE_TAKEN,
+  STOP
 };
 
 enum class ErrorAction : uint8_t {
@@ -34,6 +35,7 @@ struct Transition {
   uint16_t announcements;
   StopReason reason;
   ErrorAction errorAction;
+  bool stopRequested;
 };
 
 // A state is a description: its identity and the transitions it allows.
@@ -49,14 +51,28 @@ class StateHandler {
 
   Transition reject() const {
     return {ErrorCode::BUSY, id_, Mode::NONE, 0, StopReason::NONE,
-            ErrorAction::KEEP};
+            ErrorAction::KEEP, false};
   }
 
   Transition accept(State next, Mode mode, Announcement announcement,
                     StopReason reason = StopReason::NONE,
                     ErrorAction errorAction = ErrorAction::KEEP) const {
     return {ErrorCode::NONE, next, mode,
-            static_cast<uint16_t>(announcement), reason, errorAction};
+            static_cast<uint16_t>(announcement), reason, errorAction,
+            false};
+  }
+
+  // Keeps the current state and mode; the stop takes effect after the frame.
+  Transition stopAfterFrame(Mode mode) const {
+    return {ErrorCode::NONE, id_, mode, 0, StopReason::NONE,
+            ErrorAction::KEEP, true};
+  }
+
+  Transition stopInRun(StateView view) const {
+    if (view.mode == Mode::RUN) {
+      return stopAfterFrame(view.mode);
+    }
+    return reject();
   }
 
  private:

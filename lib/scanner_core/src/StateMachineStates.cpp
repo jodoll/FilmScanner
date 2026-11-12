@@ -52,6 +52,8 @@ Transition SeekState::on(EventId event, StateView view) const {
   switch (event) {
     case EventId::NOTCH:
       return accept(State::STOPPING, view.mode, Announcement::NOTCH);
+    case EventId::STOP:
+      return stopInRun(view);
     default:
       return reject();
   }
@@ -70,6 +72,8 @@ Transition StoppingState::on(EventId event, StateView view) const {
   switch (event) {
     case EventId::MOTION_COMPLETED:
       return accept(State::OFFSET, view.mode, Announcement::NONE);
+    case EventId::STOP:
+      return stopInRun(view);
     default:
       return reject();
   }
@@ -88,6 +92,8 @@ Transition OffsetState::on(EventId event, StateView view) const {
   switch (event) {
     case EventId::MOTION_COMPLETED:
       return accept(State::CAMERA, view.mode, Announcement::FRAME_STARTED);
+    case EventId::STOP:
+      return stopInRun(view);
     default:
       return reject();
   }
@@ -109,6 +115,8 @@ Transition CameraState::on(EventId event, StateView view) const {
         return accept(State::SEEK, Mode::RUN, Announcement::FRAME_DONE);
       }
       return reject();
+    case EventId::STOP:
+      return stopInRun(view);
     default:
       return reject();
   }

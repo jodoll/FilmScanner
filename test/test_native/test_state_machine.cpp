@@ -106,9 +106,14 @@ StateMachine inCamera() {
   return machine;
 }
 
-StateMachine inOffset() {
+StateMachine inStopping() {
   StateMachine machine = inSeek();
   machine.notchDetected();
+  return machine;
+}
+
+StateMachine inOffset() {
+  StateMachine machine = inStopping();
   machine.motionCompleted();
   return machine;
 }
@@ -173,6 +178,39 @@ TEST(StateMachineCamera, PictureTakenAfterRunFrameEntersSeek) {
   EXPECT_EQ(result.announcements,
             static_cast<uint16_t>(Announcement::FRAME_DONE));
 }
+
+struct RunFrameStopCase {
+  const char* name;
+  StateMachine (*makeMachine)();
+};
+
+class RunFrameStop : public ::testing::TestWithParam<RunFrameStopCase> {};
+
+TEST_P(RunFrameStop, StopsAfterFrameAndStaysInState) {
+  const RunFrameStopCase testCase = GetParam();
+  StateMachine machine = testCase.makeMachine();
+  const State expectedState = machine.state();
+
+  const Result result = machine.stop();
+
+  ASSERT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_TRUE(machine.stopRequested());
+  EXPECT_EQ(machine.state(), expectedState);
+  EXPECT_EQ(machine.mode(), Mode::RUN);
+  EXPECT_EQ(result.state, expectedState);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllRunFrameStates, RunFrameStop,
+    ::testing::Values(RunFrameStopCase{"Seek", &inSeek},
+                      RunFrameStopCase{"Stopping", &inStopping},
+                      RunFrameStopCase{"Offset", &inOffset},
+                      RunFrameStopCase{"Camera", &inCameraRun}),
+    [](const ::testing::TestParamInfo<RunFrameStopCase>& info) {
+      return info.param.name;
+    });
 
 struct StartRejectionCase {
   const char* name;
