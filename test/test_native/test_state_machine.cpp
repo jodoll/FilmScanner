@@ -119,6 +119,20 @@ TEST(StateMachineSeek, NotchDetectedEntersStopping) {
   EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NOTCH));
 }
 
+TEST(StateMachineStopping, MotionCompletedEntersOffsetInRunMode) {
+  StateMachine machine = inSeek();
+  machine.notchDetected();
+
+  const Result result = machine.motionCompleted();
+
+  ASSERT_EQ(result.state, State::OFFSET);
+  EXPECT_EQ(machine.state(), State::OFFSET);
+  EXPECT_EQ(machine.mode(), Mode::RUN);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
 struct StartRejectionCase {
   const char* name;
   State expectedState;

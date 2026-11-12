@@ -45,6 +45,11 @@ Result StateMachine::notchDetected() {
                             stateView(mode_, stopRequested_)));
 }
 
+Result StateMachine::motionCompleted() {
+  return apply(current_->on(detail::EventId::MOTION_COMPLETED,
+                            stateView(mode_, stopRequested_)));
+}
+
 State StateMachine::state() const { return current_->id(); }
 
 Mode StateMachine::mode() const { return mode_; }

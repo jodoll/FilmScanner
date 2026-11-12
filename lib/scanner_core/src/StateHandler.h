@@ -12,7 +12,8 @@ enum class EventId : uint8_t {
   SCAN_ONE,
   SHOOT,
   JOG,
-  NOTCH
+  NOTCH,
+  MOTION_COMPLETED
 };
 
 enum class ErrorAction : uint8_t {

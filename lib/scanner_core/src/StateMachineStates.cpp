@@ -63,7 +63,17 @@ Transition SeekState::on(EventId event, StateView view) const {
 class StoppingState : public StateHandler {
  public:
   StoppingState() : StateHandler(State::STOPPING) {}
+  Transition on(EventId event, StateView view) const override;
 };
+
+Transition StoppingState::on(EventId event, StateView view) const {
+  switch (event) {
+    case EventId::MOTION_COMPLETED:
+      return accept(State::OFFSET, view.mode, Announcement::NONE);
+    default:
+      return reject();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // OFFSET
