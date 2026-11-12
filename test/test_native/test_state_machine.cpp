@@ -106,6 +106,13 @@ StateMachine inCamera() {
   return machine;
 }
 
+StateMachine inOffset() {
+  StateMachine machine = inSeek();
+  machine.notchDetected();
+  machine.motionCompleted();
+  return machine;
+}
+
 TEST(StateMachineSeek, NotchDetectedEntersStopping) {
   StateMachine machine = inSeek();
 
@@ -131,6 +138,20 @@ TEST(StateMachineStopping, MotionCompletedEntersOffsetInRunMode) {
   EXPECT_EQ(result.error, ErrorCode::NONE);
   EXPECT_EQ(result.reason, StopReason::NONE);
   EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
+TEST(StateMachineOffset, MotionCompletedEntersCameraInRunMode) {
+  StateMachine machine = inOffset();
+
+  const Result result = machine.motionCompleted();
+
+  ASSERT_EQ(result.state, State::CAMERA);
+  EXPECT_EQ(machine.state(), State::CAMERA);
+  EXPECT_EQ(machine.mode(), Mode::RUN);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::FRAME_STARTED));
 }
 
 struct StartRejectionCase {

@@ -81,7 +81,17 @@ Transition StoppingState::on(EventId event, StateView view) const {
 class OffsetState : public StateHandler {
  public:
   OffsetState() : StateHandler(State::OFFSET) {}
+  Transition on(EventId event, StateView view) const override;
 };
+
+Transition OffsetState::on(EventId event, StateView view) const {
+  switch (event) {
+    case EventId::MOTION_COMPLETED:
+      return accept(State::CAMERA, view.mode, Announcement::FRAME_STARTED);
+    default:
+      return reject();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // CAMERA
