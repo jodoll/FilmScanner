@@ -99,7 +99,20 @@ Transition OffsetState::on(EventId event, StateView view) const {
 class CameraState : public StateHandler {
  public:
   CameraState() : StateHandler(State::CAMERA) {}
+  Transition on(EventId event, StateView view) const override;
 };
+
+Transition CameraState::on(EventId event, StateView view) const {
+  switch (event) {
+    case EventId::PICTURE_TAKEN:
+      if (view.mode == Mode::RUN && !view.stopRequested) {
+        return accept(State::SEEK, Mode::RUN, Announcement::FRAME_DONE);
+      }
+      return reject();
+    default:
+      return reject();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // JOG

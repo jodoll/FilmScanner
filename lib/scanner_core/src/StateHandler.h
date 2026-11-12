@@ -13,7 +13,8 @@ enum class EventId : uint8_t {
   SHOOT,
   JOG,
   NOTCH,
-  MOTION_COMPLETED
+  MOTION_COMPLETED,
+  PICTURE_TAKEN
 };
 
 enum class ErrorAction : uint8_t {

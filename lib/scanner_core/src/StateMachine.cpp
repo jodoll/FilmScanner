@@ -50,6 +50,11 @@ Result StateMachine::motionCompleted() {
                             stateView(mode_, stopRequested_)));
 }
 
+Result StateMachine::pictureTaken() {
+  return apply(current_->on(detail::EventId::PICTURE_TAKEN,
+                            stateView(mode_, stopRequested_)));
+}
+
 State StateMachine::state() const { return current_->id(); }
 
 Mode StateMachine::mode() const { return mode_; }
