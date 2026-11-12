@@ -106,26 +106,42 @@ class CameraState : public StateHandler {
  public:
   CameraState() : StateHandler(State::CAMERA) {}
   Transition on(EventId event, StateView view) const override;
+
+ private:
+  Transition onPictureTaken(StateView view) const;
+  Transition onRunPictureTaken(StateView view) const;
 };
 
 Transition CameraState::on(EventId event, StateView view) const {
   switch (event) {
     case EventId::PICTURE_TAKEN:
-      if (view.mode != Mode::RUN) {
-        return reject();
-      }
-      if (!view.stopRequested) {
-        return accept(State::SEEK, Mode::RUN, Announcement::FRAME_DONE);
-      }
-      return accept(State::IDLE, Mode::NONE,
-                    announcements(Announcement::FRAME_DONE,
-                                  Announcement::RUN_STOPPED),
-                    StopReason::REQUEST);
+      return onPictureTaken(view);
     case EventId::STOP:
       return stopInRun(view);
     default:
       return reject();
   }
+}
+
+Transition CameraState::onPictureTaken(StateView view) const {
+  switch (view.mode) {
+    case Mode::RUN:
+      return onRunPictureTaken(view);
+    case Mode::SHOOT:
+      return accept(State::IDLE, Mode::NONE, Announcement::SHOT_DONE);
+    default:
+      return reject();
+  }
+}
+
+Transition CameraState::onRunPictureTaken(StateView view) const {
+  if (view.stopRequested) {
+    return accept(State::IDLE, Mode::NONE,
+                  announcements(Announcement::FRAME_DONE,
+                                Announcement::RUN_STOPPED),
+                  StopReason::REQUEST);
+  }
+  return accept(State::SEEK, Mode::RUN, Announcement::FRAME_DONE);
 }
 
 // ---------------------------------------------------------------------------
