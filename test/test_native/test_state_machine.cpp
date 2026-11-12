@@ -179,6 +179,22 @@ TEST(StateMachineCamera, PictureTakenAfterRunFrameEntersSeek) {
             static_cast<uint16_t>(Announcement::FRAME_DONE));
 }
 
+TEST(StateMachineCamera, PictureTakenWithStopRequestedEndsTheRun) {
+  StateMachine machine = inCameraRun();
+  machine.stop();
+
+  const Result result = machine.pictureTaken();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::REQUEST);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::FRAME_DONE) |
+                static_cast<uint16_t>(Announcement::RUN_STOPPED));
+}
+
 struct RunFrameStopCase {
   const char* name;
   StateMachine (*makeMachine)();

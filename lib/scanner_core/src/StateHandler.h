@@ -57,9 +57,20 @@ class StateHandler {
   Transition accept(State next, Mode mode, Announcement announcement,
                     StopReason reason = StopReason::NONE,
                     ErrorAction errorAction = ErrorAction::KEEP) const {
-    return {ErrorCode::NONE, next, mode,
-            static_cast<uint16_t>(announcement), reason, errorAction,
+    return accept(next, mode, static_cast<uint16_t>(announcement), reason,
+                  errorAction);
+  }
+
+  Transition accept(State next, Mode mode, uint16_t announcementBits,
+                    StopReason reason = StopReason::NONE,
+                    ErrorAction errorAction = ErrorAction::KEEP) const {
+    return {ErrorCode::NONE, next, mode, announcementBits, reason, errorAction,
             false};
+  }
+
+  static uint16_t announcements(Announcement first,
+                                Announcement second = Announcement::NONE) {
+    return static_cast<uint16_t>(first) | static_cast<uint16_t>(second);
   }
 
   // Keeps the current state and mode; the stop takes effect after the frame.

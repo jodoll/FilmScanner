@@ -111,10 +111,16 @@ class CameraState : public StateHandler {
 Transition CameraState::on(EventId event, StateView view) const {
   switch (event) {
     case EventId::PICTURE_TAKEN:
-      if (view.mode == Mode::RUN && !view.stopRequested) {
+      if (view.mode != Mode::RUN) {
+        return reject();
+      }
+      if (!view.stopRequested) {
         return accept(State::SEEK, Mode::RUN, Announcement::FRAME_DONE);
       }
-      return reject();
+      return accept(State::IDLE, Mode::NONE,
+                    announcements(Announcement::FRAME_DONE,
+                                  Announcement::RUN_STOPPED),
+                    StopReason::REQUEST);
     case EventId::STOP:
       return stopInRun(view);
     default:
