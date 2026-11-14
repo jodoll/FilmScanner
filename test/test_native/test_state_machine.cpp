@@ -124,6 +124,21 @@ StateMachine inCameraRun() {
   return machine;
 }
 
+StateMachine inSingleSeek() {
+  StateMachine machine;
+  machine.bootCompleted();
+  machine.scanOneFrame();
+  return machine;
+}
+
+StateMachine inCameraSingle() {
+  StateMachine machine = inSingleSeek();
+  machine.notchDetected();
+  machine.motionCompleted();
+  machine.motionCompleted();
+  return machine;
+}
+
 TEST(StateMachineSeek, NotchDetectedEntersStopping) {
   StateMachine machine = inSeek();
 
@@ -207,6 +222,21 @@ TEST(StateMachineCamera, PictureTakenInShootEndsTheShoot) {
   EXPECT_EQ(result.reason, StopReason::NONE);
   EXPECT_EQ(result.announcements,
             static_cast<uint16_t>(Announcement::SHOT_DONE));
+}
+
+TEST(StateMachineCamera, PictureTakenInSingleEndsTheStep) {
+  StateMachine machine = inCameraSingle();
+
+  const Result result = machine.pictureTaken();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::FRAME_DONE) |
+                static_cast<uint16_t>(Announcement::STEP_DONE));
 }
 
 struct RunFrameStopCase {

@@ -127,6 +127,10 @@ Transition CameraState::onPictureTaken(StateView view) const {
   switch (view.mode) {
     case Mode::RUN:
       return onRunPictureTaken(view);
+    case Mode::SINGLE:
+      return accept(State::IDLE, Mode::NONE,
+                    announcements(Announcement::FRAME_DONE,
+                                  Announcement::STEP_DONE));
     case Mode::SHOOT:
       return accept(State::IDLE, Mode::NONE, Announcement::SHOT_DONE);
     default:
