@@ -58,9 +58,12 @@ hardware access.
    installs the project libraries into a PlatformIO libdeps directory inside
    the image (`PLATFORMIO_LIBDEPS_DIR`), so a fresh clone does not download
    them. The state/policy mixin declares a block volume at
-   `/home/agent/.local/share/opencode`, a lifecycle wrapper that clears the
-   kit-injected provider variables before the agent starts, and the per-sandbox
-   network policy. The OpenCode Go login happens inside the sandbox and is
+   `/home/agent/.local/share/opencode` and the per-sandbox network policy.
+   The kit-injected provider variables are left in place; the network policy
+   denies GitHub, Copilot and the other providers, and the OpenCode credential
+   is injected as a custom secret placeholder that the host-side proxy
+   substitutes on the way out. The OpenCode Go login happens inside the
+   sandbox and is
    stored in the volume. The image supplies the filesystem, the pinned agent
    kit (`docker.io/sbx/opencode:2.3.0`) supplies the agent runtime contract,
    and the mixin supplies host capabilities. A fresh sandbox therefore has a
@@ -118,12 +121,11 @@ Negative:
   and a toolchain or OpenCode change means rebuilding the image.
 - The project image is scoped to this repository's `platformio.ini`; changing
   its dependencies means rebuilding both images and recreating the sandbox.
-- The upstream OpenCode kit still sets provider variables in the container
-  environment. The mixin's wrapper clears them for the agent process, but the
-  kit's startup hooks can still see the original environment; GitHub egress is
-  denied.
-- The state/policy mixin is no longer declaration-only: it installs a wrapper
-  and declares network rules.
+- The upstream OpenCode kit sets provider variables in the container
+  environment and nothing clears them for the agent process; the network
+  policy denies GitHub, Copilot and the other providers.
+- The state/policy mixin is no longer declaration-only: it declares network
+  rules.
 - The current `AGENTS.md` commit rule conflicts with using the clone as the
   transfer channel. This is an open follow-up, not a resolved decision.
 
