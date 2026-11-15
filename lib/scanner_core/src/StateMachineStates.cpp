@@ -137,6 +137,10 @@ Transition CameraState::on(EventId event, StateView view) const {
     case EventId::PICTURE_TAKEN:
       return onPictureTaken(view);
     case EventId::STOP:
+      if (view.mode == Mode::SHOOT) {
+        return accept(State::IDLE, Mode::NONE, Announcement::SHOT_STOPPED,
+                      StopReason::REQUEST);
+      }
       return stopInRun(view);
     default:
       return reject();
