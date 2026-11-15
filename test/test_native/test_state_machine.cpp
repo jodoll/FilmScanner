@@ -222,6 +222,20 @@ TEST(StateMachineCamera, StopInShootStopsTheShot) {
             static_cast<uint16_t>(Announcement::SHOT_STOPPED));
 }
 
+TEST(StateMachineJog, MotionCompletedEndsTheJog) {
+  StateMachine machine = inJog();
+
+  const Result result = machine.motionCompleted();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::JOG_DONE));
+}
+
 TEST(StateMachineStopping, MotionCompletedEntersOffsetInRunMode) {
   StateMachine machine = inSeek();
   machine.notchDetected();

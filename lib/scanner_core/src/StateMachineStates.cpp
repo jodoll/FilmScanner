@@ -178,6 +178,15 @@ Transition CameraState::onRunPictureTaken(StateView view) const {
 class JogState : public StateHandler {
  public:
   JogState() : StateHandler(State::JOG) {}
+
+  Transition on(EventId event, StateView view) const override {
+    switch (event) {
+      case EventId::MOTION_COMPLETED:
+        return accept(State::IDLE, Mode::NONE, Announcement::JOG_DONE);
+      default:
+        return reject();
+    }
+  }
 };
 
 // ---------------------------------------------------------------------------
