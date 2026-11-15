@@ -45,6 +45,11 @@ Result StateMachine::notchDetected() {
                             stateView(mode_, stopRequested_)));
 }
 
+Result StateMachine::notchTimedOut() {
+  return apply(current_->on(detail::EventId::NOTCH_TIMEOUT,
+                            stateView(mode_, stopRequested_)));
+}
+
 Result StateMachine::motionCompleted() {
   return apply(current_->on(detail::EventId::MOTION_COMPLETED,
                             stateView(mode_, stopRequested_)));

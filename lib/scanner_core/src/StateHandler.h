@@ -13,6 +13,7 @@ enum class EventId : uint8_t {
   SHOOT,
   JOG,
   NOTCH,
+  NOTCH_TIMEOUT,
   MOTION_COMPLETED,
   PICTURE_TAKEN,
   STOP
