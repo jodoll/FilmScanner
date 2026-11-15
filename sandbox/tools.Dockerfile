@@ -1,7 +1,7 @@
 # Project-scoped image for the film-scanner sandbox.
 #
 # Build film-scanner-toolchain:v1 first, then from the repository root:
-#   docker build -f .sandbox/tools.Dockerfile -t film-scanner-tools:v1 .
+#   docker build -f sandbox/tools.Dockerfile -t film-scanner-tools:v1 .
 #
 # The project image reads the real platformio.ini and pre-installs the
 # libraries into a PlatformIO libdeps directory in the image, so the clone

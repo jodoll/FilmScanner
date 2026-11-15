@@ -4,7 +4,7 @@
 # Run from anywhere; the script uses the repository root as the Docker build
 # context because both Dockerfiles read project files.
 #
-#   ./.sandbox/build-image.sh
+#   ./sandbox/build-image.sh
 #
 # The tar is a temporary transport file: it is written for `sbx template load`
 # and deleted after the import. Rebuild when the toolchain or platformio.ini
@@ -15,7 +15,7 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_root"
 
-tar="$repo_root/.sandbox/film-scanner-tools.tar"
+tar="$repo_root/sandbox/film-scanner-tools.tar"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is not installed or not on PATH." >&2
@@ -31,12 +31,12 @@ if ! command -v sbx >/dev/null 2>&1; then
 fi
 
 docker build \
-  -f .sandbox/toolchain.Dockerfile \
+  -f "$repo_root/sandbox/toolchain.Dockerfile" \
   -t film-scanner-toolchain:v1 \
   .
 
 docker build \
-  -f .sandbox/tools.Dockerfile \
+  -f "$repo_root/sandbox/tools.Dockerfile" \
   -t film-scanner-tools:v1 \
   .
 

@@ -1,13 +1,13 @@
 #!/bin/sh
 # Host-side initialisation for the sandboxed agent environment.
 #
-# Applies the hardening in docs/13-sandbox.md §5.2 before the first sandbox is
-# created. Run it once per host, from the repository root:
+# Applies the host hardening described in docs/13-sandbox.md before the first
+# sandbox is created. Run it once per host, from the repository root:
 #
-#   ./.sandbox/init-host.sh
+#   ./sandbox/init-host.sh
 #
 # `sbx login` stays a human step: this script never authenticates for you.
-# The network allowlist (§5.3) is deliberately not applied here, because every
+# The network allowlist is deliberately not applied here, because every
 # destination is a separate decision; see the report for the rules in use.
 
 set -eu

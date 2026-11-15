@@ -52,7 +52,7 @@ hardware access.
    allowlist; the mixin narrows it. No `**`, no SSH agent forwarding, and no
    GitHub credential reaches the agent process.
 4. **The build environment is a cached pair of images; the agent's state is a
-   persistent volume.** The base Dockerfile under `.sandbox/` installs
+   persistent volume.** The base Dockerfile under `sandbox/` installs
    PlatformIO, the AVR toolchain, the native test toolchain and OpenCode 2.3.0.
    The project Dockerfile on top reads the repository's `platformio.ini` and
    installs the project libraries into a PlatformIO libdeps directory inside

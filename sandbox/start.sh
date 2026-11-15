@@ -1,14 +1,14 @@
 #!/bin/sh
 # Start the film-scanner sandbox, creating it if necessary.
 #
-#   ./.sandbox/start.sh          # create or reattach
-#   ./.sandbox/start.sh --reset  # remove the sandbox, then create it fresh
+#   ./sandbox/start.sh          # create or reattach
+#   ./sandbox/start.sh --reset  # remove the sandbox, then create it fresh
 #
 # The images are built only when the sandbox template is missing. An outdated
-# template is the operator's responsibility: run ./.sandbox/build-image.sh,
-# then ./.sandbox/start.sh --reset.
+# template is the operator's responsibility: run ./sandbox/build-image.sh,
+# then ./sandbox/start.sh --reset.
 #
-# Run ./.sandbox/init-host.sh once on a new host before the first start.
+# Run ./sandbox/init-host.sh once on a new host before the first start.
 
 set -eu
 
@@ -28,21 +28,23 @@ if ! command -v sbx >/dev/null 2>&1; then
 fi
 
 if ! sbx template ls -q | grep -qF 'film-scanner-tools:v1'; then
-  ./.sandbox/build-image.sh
+  "$repo_root/sandbox/build-image.sh"
 fi
 
 if [ "$reset" -eq 1 ]; then
-  sbx rm film-scanner
+  if sbx ls 2>/dev/null | grep -qE '^film-scanner($|[[:space:]])'; then
+    sbx rm film-scanner
+  fi
 fi
 
-if sbx ls | grep -q '^film-scanner'; then
+if sbx ls 2>/dev/null | grep -qE '^film-scanner($|[[:space:]])'; then
   sbx run --name film-scanner
 else
   sbx run docker.io/sbx/opencode:2.3.0 \
     --name film-scanner \
     --clone \
     -t film-scanner-tools:v1 \
-    --kit ./.sandbox/opencode-state \
+    --kit "$repo_root/sandbox/opencode-state" \
     .
 fi
 

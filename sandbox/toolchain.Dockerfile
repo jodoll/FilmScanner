@@ -1,7 +1,7 @@
 # Base image for the film-scanner sandbox.
 #
 # Build from the repository root, for the host architecture:
-#   docker build -f .sandbox/toolchain.Dockerfile -t film-scanner-toolchain:v1 .
+#   docker build -f sandbox/toolchain.Dockerfile -t film-scanner-toolchain:v1 .
 #
 # It carries the toolchains and the OpenCode 2 runtime. The project image in
 # tools.Dockerfile builds on it and adds the project libraries.

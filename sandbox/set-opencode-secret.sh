@@ -1,7 +1,7 @@
 #!/bin/sh
 # Store the OpenCode API key as a global sbx custom secret.
 #
-#   ./.sandbox/set-opencode-secret.sh
+#   ./sandbox/set-opencode-secret.sh
 #
 # The secret is keyed to the OpenCode hosts and the OPENCODE_API_KEY
 # environment variable. The sandbox receives only a placeholder; the
@@ -11,7 +11,7 @@
 # Global by design: available to every sandbox. Custom secrets are
 # picked up when a sandbox is created, so recreate afterwards:
 #
-#   ./.sandbox/start.sh --reset
+#   ./sandbox/start.sh --reset
 #
 # To update an existing token, rerun this script; recreate the sandbox
 # if the regenerated placeholder differs.
