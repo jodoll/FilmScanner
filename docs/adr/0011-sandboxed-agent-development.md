@@ -43,17 +43,29 @@ hardware access.
    `sbx` registers a `sandbox-<name>` remote on the host. The human fetches,
    reviews and merges; the sandbox cannot write the host working tree or
    `.git`.
-3. **Network egress is deny-by-default.** The policy starts closed and allows
-   only PlatformIO, PyPI and the model provider endpoint, extended from
-   `sbx policy log` when a build needs more. No `**`. No GitHub credentials and
-   no SSH agent forwarding, so the sandbox cannot push.
-4. **The build environment is a cached image; the agent's state is a
-   persistent volume.** A Dockerfile under `.sandbox/` installs PlatformIO, the
-   AVR toolchain and the native test toolchain into a template. A
-   declaration-only kit declares a block volume at
-   `/home/agent/.local/share/opencode`, which holds the OpenCode database,
-   provider auth and snapshots. A fresh sandbox therefore has a clean VM and a
-   clean clone without reinstalling the toolchain or losing the conversation.
+3. **Network egress is deny-by-default and per sandbox.** The allowlist is
+   declared by the state/policy mixin: OpenCode Go (`opencode.ai`,
+   `*.opencode.ai`), PlatformIO (`registry.platformio.org`,
+   `api.registry.platformio.org`, `dl.registry.platformio.org`) and PyPI
+   (`pypi.org`, `files.pythonhosted.org`). GitHub, Copilot and the other model
+   providers are denied. The upstream OpenCode kit pre-provisions a broad
+   allowlist; the mixin narrows it. No `**`, no SSH agent forwarding, and no
+   GitHub credential reaches the agent process.
+4. **The build environment is a cached pair of images; the agent's state is a
+   persistent volume.** The base Dockerfile under `.sandbox/` installs
+   PlatformIO, the AVR toolchain, the native test toolchain and OpenCode 2.3.0.
+   The project Dockerfile on top reads the repository's `platformio.ini` and
+   installs the project libraries into a PlatformIO libdeps directory inside
+   the image (`PLATFORMIO_LIBDEPS_DIR`), so a fresh clone does not download
+   them. The state/policy mixin declares a block volume at
+   `/home/agent/.local/share/opencode`, a lifecycle wrapper that clears the
+   kit-injected provider variables before the agent starts, and the per-sandbox
+   network policy. The OpenCode Go login happens inside the sandbox and is
+   stored in the volume. The image supplies the filesystem, the pinned agent
+   kit (`docker.io/sbx/opencode:2.3.0`) supplies the agent runtime contract,
+   and the mixin supplies host capabilities. A fresh sandbox therefore has a
+   clean VM and a clean clone without reinstalling the toolchain or the project
+   libraries, or losing the conversation.
 5. **Reset is remove-and-recreate, not `sbx reset`.** `sbx rm` deletes the VM
    and clone and retains the block volume; recreating with the same sandbox
    name, kit path and volume path reattaches it. `sbx reset` is global and also
@@ -84,6 +96,12 @@ Positive:
   deliberate decision.
 - A clean VM per session, with the toolchain preinstalled and the conversation
   retained, is what makes the workflow practical rather than a rebuild ritual.
+- Project libraries are present at VM startup, so the first build does not
+  depend on the package registry or re-download them.
+- OpenCode 2 runs from the image, and the agent kit and application version are
+  pinned together.
+- The network allowlist is per sandbox and lives in the kit, not in host-wide
+  CLI rules.
 - The host toolchain no longer has to match the toolchain the agent uses.
 
 Negative:
@@ -96,8 +114,16 @@ Negative:
   untracked and ignored files. Secrets must not live there.
 - The sandbox does not protect the repository itself; clone mode protects the
   host copy, and the human merge protects the branch.
-- Toolchain image, kit and volume have identities that must stay stable, and a
-  toolchain change means rebuilding the image.
+- Toolchain image, agent kit and volume have identities that must stay stable,
+  and a toolchain or OpenCode change means rebuilding the image.
+- The project image is scoped to this repository's `platformio.ini`; changing
+  its dependencies means rebuilding both images and recreating the sandbox.
+- The upstream OpenCode kit still sets provider variables in the container
+  environment. The mixin's wrapper clears them for the agent process, but the
+  kit's startup hooks can still see the original environment; GitHub egress is
+  denied.
+- The state/policy mixin is no longer declaration-only: it installs a wrapper
+  and declares network rules.
 - The current `AGENTS.md` commit rule conflicts with using the clone as the
   transfer channel. This is an open follow-up, not a resolved decision.
 

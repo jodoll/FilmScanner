@@ -1,0 +1,99 @@
+schemaVersion: "3"
+kind: mixin
+capabilities:
+  - type: com.docker.sandbox/volume@1
+    config:
+      path: /home/agent/.local/share/opencode
+      size: 2g
+      mode: "0755"
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - command: chown -R 1000:1000 /home/agent/.local/share/opencode
+          user: "0"
+        # The official OpenCode kit injects provider credentials into the
+        # container environment, including a GitHub Copilot token. Kits have no
+        # env field, so replace the opencode command with a wrapper that clears
+        # those variables before the agent process starts.
+        - command: |
+            mkdir -p /usr/local/share/npm-global/bin
+            printf '%s\n' \
+              '#!/bin/sh' \
+              'unset GH_TOKEN GITHUB_TOKEN OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY XAI_API_KEY GOOGLE_GENERATIVE_AI_API_KEY GROQ_API_KEY' \
+              'exec /home/agent/.opencode/bin/opencode "$@"' \
+              > /usr/local/share/npm-global/bin/opencode
+            chmod 0755 /usr/local/share/npm-global/bin/opencode
+          user: "0"
+  # Per-sandbox egress. The official kit pre-provisions a broad provider and
+  # package-host allowlist; these denies narrow it to this project's needs.
+  # The kit's localhost rule for the MCP gateway is left untouched.
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      install:
+        allow:
+          - opencode.ai
+          - "*.opencode.ai"
+          - registry.platformio.org
+          - api.registry.platformio.org
+          - dl.registry.platformio.org
+          - pypi.org
+          - files.pythonhosted.org
+        deny:
+          - github.com
+          - "*.github.com"
+          - api.github.com
+          - codeload.github.com
+          - "*.githubusercontent.com"
+          - "*.githubcopilot.com"
+          - copilot.github.com
+          - api.openai.com
+          - auth.openai.com
+          - chatgpt.com
+          - openai.com
+          - api.anthropic.com
+          - console.anthropic.com
+          - claude.ai
+          - generativelanguage.googleapis.com
+          - aiplatform.googleapis.com
+          - oauth2.googleapis.com
+          - vertexai.googleapis.com
+          - api.x.ai
+          - api.groq.com
+          - openrouter.ai
+          - registry.npmjs.org
+          - deb.debian.org
+          - dhi.io
+      runtime:
+        allow:
+          - opencode.ai
+          - "*.opencode.ai"
+          - registry.platformio.org
+          - api.registry.platformio.org
+          - dl.registry.platformio.org
+          - pypi.org
+          - files.pythonhosted.org
+        deny:
+          - github.com
+          - "*.github.com"
+          - api.github.com
+          - codeload.github.com
+          - "*.githubusercontent.com"
+          - "*.githubcopilot.com"
+          - copilot.github.com
+          - api.openai.com
+          - auth.openai.com
+          - chatgpt.com
+          - openai.com
+          - api.anthropic.com
+          - console.anthropic.com
+          - claude.ai
+          - generativelanguage.googleapis.com
+          - aiplatform.googleapis.com
+          - oauth2.googleapis.com
+          - vertexai.googleapis.com
+          - api.x.ai
+          - api.groq.com
+          - openrouter.ai
+          - registry.npmjs.org
+          - deb.debian.org
+          - dhi.io
