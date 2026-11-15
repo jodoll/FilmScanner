@@ -59,12 +59,9 @@ hardware access.
    the image (`PLATFORMIO_LIBDEPS_DIR`), so a fresh clone does not download
    them. The state/policy mixin declares a block volume at
    `/home/agent/.local/share/opencode` and the per-sandbox network policy.
-   The kit-injected provider variables are left in place; the network policy
-   denies GitHub, Copilot and the other providers, and the OpenCode credential
-   is injected as a custom secret placeholder that the host-side proxy
-   substitutes on the way out. The OpenCode Go login happens inside the
-   sandbox and is
-   stored in the volume. The image supplies the filesystem, the pinned agent
+   The OpenCode credential is injected as a custom secret placeholder that the
+   host-side proxy substitutes on the way out; no provider login happens
+   inside the sandbox. The image supplies the filesystem, the pinned agent
    kit (`docker.io/sbx/opencode:2.3.0`) supplies the agent runtime contract,
    and the mixin supplies host capabilities. A fresh sandbox therefore has a
    clean VM and a clean clone without reinstalling the toolchain or the project
@@ -121,9 +118,6 @@ Negative:
   and a toolchain or OpenCode change means rebuilding the image.
 - The project image is scoped to this repository's `platformio.ini`; changing
   its dependencies means rebuilding both images and recreating the sandbox.
-- The upstream OpenCode kit sets provider variables in the container
-  environment and nothing clears them for the agent process; the network
-  policy denies GitHub, Copilot and the other providers.
 - The state/policy mixin is no longer declaration-only: it declares network
   rules.
 - The current `AGENTS.md` commit rule conflicts with using the clone as the

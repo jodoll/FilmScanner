@@ -11,10 +11,14 @@ capabilities:
       install:
         - command: chown -R 1000:1000 /home/agent/.local/share/opencode
           user: "0"
-        # The base image installs opencode at /home/agent/.opencode/bin, which
-        # is not on the PATH sbx searches for the agent binary. Link it to the
-        # location sbx expects. No environment variables are touched.
-        - command: mkdir -p /usr/local/share/npm-global/bin && ln -sf /home/agent/.opencode/bin/opencode /usr/local/share/npm-global/bin/opencode
+        - command: |
+            mkdir -p /usr/local/share/npm-global/bin
+            printf '%s\n' \
+              '#!/bin/sh' \
+              'unset GH_TOKEN GITHUB_TOKEN OPENAI_API_KEY ANTHROPIC_API_KEY OPENROUTER_API_KEY XAI_API_KEY GOOGLE_GENERATIVE_AI_API_KEY GROQ_API_KEY' \
+              'exec /home/agent/.opencode/bin/opencode "$@"' \
+              > /usr/local/share/npm-global/bin/opencode
+            chmod 0755 /usr/local/share/npm-global/bin/opencode
           user: "0"
   # Per-sandbox egress. The official kit pre-provisions a broad provider and
   # package-host allowlist; these denies narrow it to this project's needs.
