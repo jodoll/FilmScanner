@@ -85,6 +85,12 @@ TEST(StateMachineJog, EntersJogWithoutMode) {
 
 StateMachine inBoot() { return StateMachine{}; }
 
+StateMachine inIdle() {
+  StateMachine machine;
+  machine.bootCompleted();
+  return machine;
+}
+
 StateMachine inSeek() {
   StateMachine machine;
   machine.bootCompleted();
@@ -496,6 +502,68 @@ INSTANTIATE_TEST_SUITE_P(
                       AbortCase{"Shoot", Announcement::SHOT_STOPPED, &inCamera},
                       AbortCase{"Jog", Announcement::JOG_STOPPED, &inJog}),
     [](const ::testing::TestParamInfo<AbortCase>& info) {
+      return info.param.name;
+    });
+
+struct FaultCase {
+  const char* name;
+  uint16_t announcements;
+  StopReason reason;
+  StateMachine (*makeMachine)();
+};
+
+class Fault : public ::testing::TestWithParam<FaultCase> {};
+
+TEST_P(Fault, EntersFaultAndStoresDriverFault) {
+  const FaultCase testCase = GetParam();
+  StateMachine machine = testCase.makeMachine();
+
+  const Result result = machine.driverFaultDetected();
+
+  ASSERT_EQ(result.state, State::FAULT);
+  EXPECT_EQ(machine.state(), State::FAULT);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(machine.lastError(), ErrorCode::DRIVER_FAULT);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, testCase.reason);
+  EXPECT_EQ(result.announcements, testCase.announcements);
+}
+
+const uint16_t kFaultRaised = static_cast<uint16_t>(Announcement::FAULT_RAISED);
+
+INSTANTIATE_TEST_SUITE_P(
+    EveryNonFaultState, Fault,
+    ::testing::Values(
+        FaultCase{"RunStopping",
+                  static_cast<uint16_t>(Announcement::RUN_STOPPED) | kFaultRaised,
+                  StopReason::ERROR, &inStopping},
+        FaultCase{"RunOffset",
+                  static_cast<uint16_t>(Announcement::RUN_STOPPED) | kFaultRaised,
+                  StopReason::ERROR, &inOffset},
+        FaultCase{"RunCamera",
+                  static_cast<uint16_t>(Announcement::RUN_STOPPED) | kFaultRaised,
+                  StopReason::ERROR, &inCameraRun},
+        FaultCase{"SingleSeek",
+                  static_cast<uint16_t>(Announcement::STEP_STOPPED) | kFaultRaised,
+                  StopReason::ERROR, &inSingleSeek},
+        FaultCase{"SingleStopping",
+                  static_cast<uint16_t>(Announcement::STEP_STOPPED) | kFaultRaised,
+                  StopReason::ERROR, &inSingleStopping},
+        FaultCase{"SingleOffset",
+                  static_cast<uint16_t>(Announcement::STEP_STOPPED) | kFaultRaised,
+                  StopReason::ERROR, &inSingleOffset},
+        FaultCase{"SingleCamera",
+                  static_cast<uint16_t>(Announcement::STEP_STOPPED) | kFaultRaised,
+                  StopReason::ERROR, &inSingleCamera},
+        FaultCase{"Shoot",
+                  static_cast<uint16_t>(Announcement::SHOT_STOPPED) | kFaultRaised,
+                  StopReason::ERROR, &inCamera},
+        FaultCase{"Jog",
+                  static_cast<uint16_t>(Announcement::JOG_STOPPED) | kFaultRaised,
+                  StopReason::ERROR, &inJog},
+        FaultCase{"Idle", kFaultRaised, StopReason::NONE, &inIdle},
+        FaultCase{"Boot", kFaultRaised, StopReason::NONE, &inBoot}),
+    [](const ::testing::TestParamInfo<FaultCase>& info) {
       return info.param.name;
     });
 

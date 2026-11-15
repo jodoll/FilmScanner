@@ -10,6 +10,15 @@ namespace {
 class BootState : public StateNode {
  public:
   BootState() : StateNode(State::BOOT) {}
+
+  Transition transitionFor(EventId event, StateView) const override {
+    switch (event) {
+      case EventId::DRIVER_FAULT:
+        return faultTransition(Announcement::NONE, StopReason::NONE);
+      default:
+        return noTransition();
+    }
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -34,6 +43,8 @@ Transition IdleState::transitionFor(EventId event, StateView) const {
                       StopReason::NONE, ErrorAction::CLEAR);
     case EventId::JOG:
       return accepted(State::JOG, Mode::NONE, Announcement::NONE);
+    case EventId::DRIVER_FAULT:
+      return faultTransition(Announcement::NONE, StopReason::NONE);
     default:
       return noTransition();
   }
@@ -77,10 +88,7 @@ Transition SeekState::transitionFor(EventId event, StateView view) const {
     case EventId::ABORT:
       return abortTransition(view.mode);
     case EventId::DRIVER_FAULT:
-      return {ErrorCode::DRIVER_FAULT, State::FAULT, Mode::NONE,
-              announcements(Announcement::RUN_STOPPED,
-                            Announcement::FAULT_RAISED),
-              StopReason::ERROR, ErrorAction::SET, false};
+      return faultTransition(stopAnnouncement(view.mode), StopReason::ERROR);
     default:
       return noTransition();
   }
@@ -103,6 +111,8 @@ Transition StoppingState::transitionFor(EventId event, StateView view) const {
       return stopTransition(view);
     case EventId::ABORT:
       return abortTransition(view.mode);
+    case EventId::DRIVER_FAULT:
+      return faultTransition(stopAnnouncement(view.mode), StopReason::ERROR);
     default:
       return noTransition();
   }
@@ -125,6 +135,8 @@ Transition OffsetState::transitionFor(EventId event, StateView view) const {
       return stopTransition(view);
     case EventId::ABORT:
       return abortTransition(view.mode);
+    case EventId::DRIVER_FAULT:
+      return faultTransition(stopAnnouncement(view.mode), StopReason::ERROR);
     default:
       return noTransition();
   }
@@ -155,6 +167,8 @@ Transition CameraState::transitionFor(EventId event, StateView view) const {
       return stopTransition(view);
     case EventId::ABORT:
       return abortTransition(view.mode);
+    case EventId::DRIVER_FAULT:
+      return faultTransition(stopAnnouncement(view.mode), StopReason::ERROR);
     default:
       return noTransition();
   }
@@ -202,6 +216,8 @@ class JogState : public StateNode {
       case EventId::ABORT:
         return accepted(State::IDLE, Mode::NONE, Announcement::JOG_STOPPED,
                         StopReason::ABORT);
+      case EventId::DRIVER_FAULT:
+        return faultTransition(Announcement::JOG_STOPPED, StopReason::ERROR);
       default:
         return noTransition();
     }

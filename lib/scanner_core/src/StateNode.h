@@ -87,21 +87,29 @@ class StateNode {
             ErrorAction::KEEP, true};
   }
 
-  // Any active activity ends in IDLE with its mode's stop announcement.
-  Transition abortTransition(Mode mode) const {
-    Announcement stop;
+  static Announcement stopAnnouncement(Mode mode) {
     switch (mode) {
       case Mode::SINGLE:
-        stop = Announcement::STEP_STOPPED;
-        break;
+        return Announcement::STEP_STOPPED;
       case Mode::SHOOT:
-        stop = Announcement::SHOT_STOPPED;
-        break;
+        return Announcement::SHOT_STOPPED;
       default:
-        stop = Announcement::RUN_STOPPED;
-        break;
+        return Announcement::RUN_STOPPED;
     }
-    return accepted(State::IDLE, Mode::NONE, stop, StopReason::ABORT);
+  }
+
+  // Any active activity ends in IDLE with its mode's stop announcement.
+  Transition abortTransition(Mode mode) const {
+    return accepted(State::IDLE, Mode::NONE, stopAnnouncement(mode),
+                    StopReason::ABORT);
+  }
+
+  // A driver fault stores the code and raises FAULT_RAISED; a node that was
+  // mid-activity also emits its stop announcement with reason ERROR.
+  Transition faultTransition(Announcement stop, StopReason reason) const {
+    return {ErrorCode::DRIVER_FAULT, State::FAULT, Mode::NONE,
+            announcements(stop, Announcement::FAULT_RAISED), reason,
+            ErrorAction::SET, false};
   }
 
   // RUN latches and finishes the frame; SINGLE stops immediately.
