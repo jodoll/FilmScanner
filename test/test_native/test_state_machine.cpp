@@ -437,6 +437,52 @@ INSTANTIATE_TEST_SUITE_P(
       return info.param.name;
     });
 
+struct AbortCase {
+  const char* name;
+  Announcement stopAnnouncement;
+  StateMachine (*makeMachine)();
+};
+
+class Abort : public ::testing::TestWithParam<AbortCase> {};
+
+TEST_P(Abort, GoesIdleWithTheModeStopAnnouncement) {
+  const AbortCase testCase = GetParam();
+  StateMachine machine = testCase.makeMachine();
+
+  const Result result = machine.abort();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_FALSE(machine.stopRequested());
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::ABORT);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(testCase.stopAnnouncement));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    EveryActiveState, Abort,
+    ::testing::Values(AbortCase{"RunStopping", Announcement::RUN_STOPPED,
+                                &inStopping},
+                      AbortCase{"RunOffset", Announcement::RUN_STOPPED,
+                                &inOffset},
+                      AbortCase{"RunCamera", Announcement::RUN_STOPPED,
+                                &inCameraRun},
+                      AbortCase{"SingleSeek", Announcement::STEP_STOPPED,
+                                &inSingleSeek},
+                      AbortCase{"SingleStopping", Announcement::STEP_STOPPED,
+                                &inSingleStopping},
+                      AbortCase{"SingleOffset", Announcement::STEP_STOPPED,
+                                &inSingleOffset},
+                      AbortCase{"SingleCamera", Announcement::STEP_STOPPED,
+                                &inSingleCamera},
+                      AbortCase{"Shoot", Announcement::SHOT_STOPPED, &inCamera},
+                      AbortCase{"Jog", Announcement::JOG_STOPPED, &inJog}),
+    [](const ::testing::TestParamInfo<AbortCase>& info) {
+      return info.param.name;
+    });
+
 struct StartRejectionCase {
   const char* name;
   State expectedState;

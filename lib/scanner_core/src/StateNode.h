@@ -84,6 +84,23 @@ class StateNode {
             ErrorAction::KEEP, true};
   }
 
+  // Any active activity ends in IDLE with its mode's stop announcement.
+  Transition abortTransition(Mode mode) const {
+    Announcement stop;
+    switch (mode) {
+      case Mode::SINGLE:
+        stop = Announcement::STEP_STOPPED;
+        break;
+      case Mode::SHOOT:
+        stop = Announcement::SHOT_STOPPED;
+        break;
+      default:
+        stop = Announcement::RUN_STOPPED;
+        break;
+    }
+    return accepted(State::IDLE, Mode::NONE, stop, StopReason::ABORT);
+  }
+
   // RUN latches and finishes the frame; SINGLE stops immediately.
   Transition stopTransition(StateView view) const {
     if (view.mode == Mode::RUN) {

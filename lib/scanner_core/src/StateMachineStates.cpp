@@ -75,8 +75,7 @@ Transition SeekState::transitionFor(EventId event, StateView view) const {
     case EventId::STOP:
       return stopTransition(view);
     case EventId::ABORT:
-      return accepted(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
-                      StopReason::ABORT);
+      return abortTransition(view.mode);
     default:
       return noTransition();
   }
@@ -97,6 +96,8 @@ Transition StoppingState::transitionFor(EventId event, StateView view) const {
       return accepted(State::OFFSET, view.mode, Announcement::NONE);
     case EventId::STOP:
       return stopTransition(view);
+    case EventId::ABORT:
+      return abortTransition(view.mode);
     default:
       return noTransition();
   }
@@ -117,6 +118,8 @@ Transition OffsetState::transitionFor(EventId event, StateView view) const {
       return accepted(State::CAMERA, view.mode, Announcement::FRAME_STARTED);
     case EventId::STOP:
       return stopTransition(view);
+    case EventId::ABORT:
+      return abortTransition(view.mode);
     default:
       return noTransition();
   }
@@ -145,6 +148,8 @@ Transition CameraState::transitionFor(EventId event, StateView view) const {
                         StopReason::REQUEST);
       }
       return stopTransition(view);
+    case EventId::ABORT:
+      return abortTransition(view.mode);
     default:
       return noTransition();
   }
@@ -189,6 +194,9 @@ class JogState : public StateNode {
       case EventId::STOP:
         return accepted(State::IDLE, Mode::NONE, Announcement::JOG_STOPPED,
                         StopReason::REQUEST);
+      case EventId::ABORT:
+        return accepted(State::IDLE, Mode::NONE, Announcement::JOG_STOPPED,
+                        StopReason::ABORT);
       default:
         return noTransition();
     }
