@@ -194,6 +194,20 @@ TEST(StateMachineSeek, SeekBudgetExhaustedInRunEndsTheRun) {
             static_cast<uint16_t>(Announcement::RUN_STOPPED));
 }
 
+TEST(StateMachineSeek, SeekBudgetExhaustedInSingleFailsTheStep) {
+  StateMachine machine = inSingleSeek();
+
+  const Result result = machine.motionCompleted();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::MOTION_TIMEOUT);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::STEP_FAILED));
+}
+
 TEST(StateMachineStopping, MotionCompletedEntersOffsetInRunMode) {
   StateMachine machine = inSeek();
   machine.notchDetected();

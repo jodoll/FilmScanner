@@ -67,6 +67,10 @@ Transition SeekState::on(EventId event, StateView view) const {
         return accept(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
                       StopReason::MOTION_TIMEOUT);
       }
+      if (view.mode == Mode::SINGLE) {
+        return accept(State::IDLE, Mode::NONE, Announcement::STEP_FAILED,
+                      StopReason::MOTION_TIMEOUT);
+      }
       return reject();
     case EventId::STOP:
       return stopInRun(view);
