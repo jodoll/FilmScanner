@@ -1,4 +1,4 @@
-#include "StateHandler.h"
+#include "StateNode.h"
 
 namespace scanner {
 namespace detail {
@@ -7,187 +7,187 @@ namespace {
 // ---------------------------------------------------------------------------
 // BOOT
 // ---------------------------------------------------------------------------
-class BootState : public StateHandler {
+class BootState : public StateNode {
  public:
-  BootState() : StateHandler(State::BOOT) {}
+  BootState() : StateNode(State::BOOT) {}
 };
 
 // ---------------------------------------------------------------------------
 // IDLE
 // ---------------------------------------------------------------------------
-class IdleState : public StateHandler {
+class IdleState : public StateNode {
  public:
-  IdleState() : StateHandler(State::IDLE) {}
-  Transition on(EventId event, StateView) const override;
+  IdleState() : StateNode(State::IDLE) {}
+  Transition transitionFor(EventId event, StateView) const override;
 };
 
-Transition IdleState::on(EventId event, StateView) const {
+Transition IdleState::transitionFor(EventId event, StateView) const {
   switch (event) {
     case EventId::START_RUN:
-      return accept(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
-                    StopReason::NONE, ErrorAction::CLEAR);
+      return accepted(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
+                      StopReason::NONE, ErrorAction::CLEAR);
     case EventId::SCAN_ONE:
-      return accept(State::SEEK, Mode::SINGLE, Announcement::NONE,
-                    StopReason::NONE, ErrorAction::CLEAR);
+      return accepted(State::SEEK, Mode::SINGLE, Announcement::NONE,
+                      StopReason::NONE, ErrorAction::CLEAR);
     case EventId::SHOOT:
-      return accept(State::CAMERA, Mode::SHOOT, Announcement::NONE,
-                    StopReason::NONE, ErrorAction::CLEAR);
+      return accepted(State::CAMERA, Mode::SHOOT, Announcement::NONE,
+                      StopReason::NONE, ErrorAction::CLEAR);
     case EventId::JOG:
-      return accept(State::JOG, Mode::NONE, Announcement::NONE);
+      return accepted(State::JOG, Mode::NONE, Announcement::NONE);
     default:
-      return reject();
+      return noTransition();
   }
 }
 
 // ---------------------------------------------------------------------------
 // SEEK
 // ---------------------------------------------------------------------------
-class SeekState : public StateHandler {
+class SeekState : public StateNode {
  public:
-  SeekState() : StateHandler(State::SEEK) {}
-  Transition on(EventId event, StateView view) const override;
+  SeekState() : StateNode(State::SEEK) {}
+  Transition transitionFor(EventId event, StateView view) const override;
 };
 
-Transition SeekState::on(EventId event, StateView view) const {
+Transition SeekState::transitionFor(EventId event, StateView view) const {
   switch (event) {
     case EventId::NOTCH:
-      return accept(State::STOPPING, view.mode, Announcement::NOTCH);
+      return accepted(State::STOPPING, view.mode, Announcement::NOTCH);
     case EventId::NOTCH_TIMEOUT:
       if (view.mode == Mode::RUN) {
-        return accept(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
-                      StopReason::NOTCH_TIMEOUT);
+        return accepted(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
+                        StopReason::NOTCH_TIMEOUT);
       }
       if (view.mode == Mode::SINGLE) {
-        return accept(State::IDLE, Mode::NONE, Announcement::STEP_FAILED,
-                      StopReason::NOTCH_TIMEOUT);
+        return accepted(State::IDLE, Mode::NONE, Announcement::STEP_FAILED,
+                        StopReason::NOTCH_TIMEOUT);
       }
-      return reject();
+      return noTransition();
     case EventId::MOTION_COMPLETED:
       if (view.mode == Mode::RUN) {
-        return accept(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
-                      StopReason::MOTION_TIMEOUT);
+        return accepted(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
+                        StopReason::MOTION_TIMEOUT);
       }
       if (view.mode == Mode::SINGLE) {
-        return accept(State::IDLE, Mode::NONE, Announcement::STEP_FAILED,
-                      StopReason::MOTION_TIMEOUT);
+        return accepted(State::IDLE, Mode::NONE, Announcement::STEP_FAILED,
+                        StopReason::MOTION_TIMEOUT);
       }
-      return reject();
+      return noTransition();
     case EventId::STOP:
-      return stopInFrame(view);
+      return stopTransition(view);
     default:
-      return reject();
+      return noTransition();
   }
 }
 
 // ---------------------------------------------------------------------------
 // STOPPING
 // ---------------------------------------------------------------------------
-class StoppingState : public StateHandler {
+class StoppingState : public StateNode {
  public:
-  StoppingState() : StateHandler(State::STOPPING) {}
-  Transition on(EventId event, StateView view) const override;
+  StoppingState() : StateNode(State::STOPPING) {}
+  Transition transitionFor(EventId event, StateView view) const override;
 };
 
-Transition StoppingState::on(EventId event, StateView view) const {
+Transition StoppingState::transitionFor(EventId event, StateView view) const {
   switch (event) {
     case EventId::MOTION_COMPLETED:
-      return accept(State::OFFSET, view.mode, Announcement::NONE);
+      return accepted(State::OFFSET, view.mode, Announcement::NONE);
     case EventId::STOP:
-      return stopInFrame(view);
+      return stopTransition(view);
     default:
-      return reject();
+      return noTransition();
   }
 }
 
 // ---------------------------------------------------------------------------
 // OFFSET
 // ---------------------------------------------------------------------------
-class OffsetState : public StateHandler {
+class OffsetState : public StateNode {
  public:
-  OffsetState() : StateHandler(State::OFFSET) {}
-  Transition on(EventId event, StateView view) const override;
+  OffsetState() : StateNode(State::OFFSET) {}
+  Transition transitionFor(EventId event, StateView view) const override;
 };
 
-Transition OffsetState::on(EventId event, StateView view) const {
+Transition OffsetState::transitionFor(EventId event, StateView view) const {
   switch (event) {
     case EventId::MOTION_COMPLETED:
-      return accept(State::CAMERA, view.mode, Announcement::FRAME_STARTED);
+      return accepted(State::CAMERA, view.mode, Announcement::FRAME_STARTED);
     case EventId::STOP:
-      return stopInFrame(view);
+      return stopTransition(view);
     default:
-      return reject();
+      return noTransition();
   }
 }
 
 // ---------------------------------------------------------------------------
 // CAMERA
 // ---------------------------------------------------------------------------
-class CameraState : public StateHandler {
+class CameraState : public StateNode {
  public:
-  CameraState() : StateHandler(State::CAMERA) {}
-  Transition on(EventId event, StateView view) const override;
+  CameraState() : StateNode(State::CAMERA) {}
+  Transition transitionFor(EventId event, StateView view) const override;
 
  private:
-  Transition onPictureTaken(StateView view) const;
-  Transition onRunPictureTaken(StateView view) const;
+  Transition pictureTakenTransition(StateView view) const;
+  Transition runPictureTakenTransition(StateView view) const;
 };
 
-Transition CameraState::on(EventId event, StateView view) const {
+Transition CameraState::transitionFor(EventId event, StateView view) const {
   switch (event) {
     case EventId::PICTURE_TAKEN:
-      return onPictureTaken(view);
+      return pictureTakenTransition(view);
     case EventId::STOP:
       if (view.mode == Mode::SHOOT) {
-        return accept(State::IDLE, Mode::NONE, Announcement::SHOT_STOPPED,
-                      StopReason::REQUEST);
+        return accepted(State::IDLE, Mode::NONE, Announcement::SHOT_STOPPED,
+                        StopReason::REQUEST);
       }
-      return stopInFrame(view);
+      return stopTransition(view);
     default:
-      return reject();
+      return noTransition();
   }
 }
 
-Transition CameraState::onPictureTaken(StateView view) const {
+Transition CameraState::pictureTakenTransition(StateView view) const {
   switch (view.mode) {
     case Mode::RUN:
-      return onRunPictureTaken(view);
+      return runPictureTakenTransition(view);
     case Mode::SINGLE:
-      return accept(State::IDLE, Mode::NONE,
-                    announcements(Announcement::FRAME_DONE,
-                                  Announcement::STEP_DONE));
+      return accepted(State::IDLE, Mode::NONE,
+                      announcements(Announcement::FRAME_DONE,
+                                    Announcement::STEP_DONE));
     case Mode::SHOOT:
-      return accept(State::IDLE, Mode::NONE, Announcement::SHOT_DONE);
+      return accepted(State::IDLE, Mode::NONE, Announcement::SHOT_DONE);
     default:
-      return reject();
+      return noTransition();
   }
 }
 
-Transition CameraState::onRunPictureTaken(StateView view) const {
+Transition CameraState::runPictureTakenTransition(StateView view) const {
   if (view.stopRequested) {
-    return accept(State::IDLE, Mode::NONE,
-                  announcements(Announcement::FRAME_DONE,
-                                Announcement::RUN_STOPPED),
-                  StopReason::REQUEST);
+    return accepted(State::IDLE, Mode::NONE,
+                    announcements(Announcement::FRAME_DONE,
+                                  Announcement::RUN_STOPPED),
+                    StopReason::REQUEST);
   }
-  return accept(State::SEEK, Mode::RUN, Announcement::FRAME_DONE);
+  return accepted(State::SEEK, Mode::RUN, Announcement::FRAME_DONE);
 }
 
 // ---------------------------------------------------------------------------
 // JOG
 // ---------------------------------------------------------------------------
-class JogState : public StateHandler {
+class JogState : public StateNode {
  public:
-  JogState() : StateHandler(State::JOG) {}
+  JogState() : StateNode(State::JOG) {}
 
-  Transition on(EventId event, StateView view) const override {
+  Transition transitionFor(EventId event, StateView view) const override {
     switch (event) {
       case EventId::MOTION_COMPLETED:
-        return accept(State::IDLE, Mode::NONE, Announcement::JOG_DONE);
+        return accepted(State::IDLE, Mode::NONE, Announcement::JOG_DONE);
       case EventId::STOP:
-        return accept(State::IDLE, Mode::NONE, Announcement::JOG_STOPPED,
-                      StopReason::REQUEST);
+        return accepted(State::IDLE, Mode::NONE, Announcement::JOG_STOPPED,
+                        StopReason::REQUEST);
       default:
-        return reject();
+        return noTransition();
     }
   }
 };
@@ -195,25 +195,25 @@ class JogState : public StateHandler {
 // ---------------------------------------------------------------------------
 // FAULT
 // ---------------------------------------------------------------------------
-class FaultState : public StateHandler {
+class FaultState : public StateNode {
  public:
-  FaultState() : StateHandler(State::FAULT) {}
-  Transition on(EventId event, StateView) const override;
+  FaultState() : StateNode(State::FAULT) {}
+  Transition transitionFor(EventId event, StateView) const override;
 };
 
-Transition FaultState::on(EventId event, StateView) const {
+Transition FaultState::transitionFor(EventId event, StateView) const {
   switch (event) {
     case EventId::START_RUN:
-      return accept(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
-                    StopReason::NONE, ErrorAction::CLEAR);
+      return accepted(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
+                      StopReason::NONE, ErrorAction::CLEAR);
     default:
-      return reject();
+      return noTransition();
   }
 }
 
 }  // namespace
 
-const StateHandler* stateFor(State state) {
+const StateNode* stateFor(State state) {
   static const BootState kBoot;
   static const IdleState kIdle;
   static const SeekState kSeek;
@@ -224,12 +224,12 @@ const StateHandler* stateFor(State state) {
   static const FaultState kFault;
 
   // Indexed by State; the order matches the enum.
-  static const StateHandler* const kStates[] = {
+  static const StateNode* const kStates[] = {
       &kBoot, &kIdle,     &kSeek, &kStopping,
       &kOffset, &kCamera, &kJog,  &kFault,
   };
   static_assert(sizeof(kStates) / sizeof(kStates[0]) == 8,
-                "Every State needs a handler");
+                "Every State needs a node");
   return kStates[static_cast<uint8_t>(state)];
 }
 

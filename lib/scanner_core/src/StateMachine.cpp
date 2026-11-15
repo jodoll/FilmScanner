@@ -1,6 +1,6 @@
 #include "scanner_core/StateMachine.h"
 
-#include "StateHandler.h"
+#include "StateNode.h"
 
 namespace scanner {
 
@@ -21,47 +21,47 @@ Result StateMachine::bootCompleted() {
 }
 
 Result StateMachine::startContinuousRun() {
-  return apply(current_->on(detail::EventId::START_RUN,
+  return apply(current_->transitionFor(detail::EventId::START_RUN,
                             stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::scanOneFrame() {
-  return apply(current_->on(detail::EventId::SCAN_ONE,
+  return apply(current_->transitionFor(detail::EventId::SCAN_ONE,
                             stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::shootCurrentFrame() {
-  return apply(current_->on(detail::EventId::SHOOT,
+  return apply(current_->transitionFor(detail::EventId::SHOOT,
                             stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::jog() {
-  return apply(current_->on(detail::EventId::JOG,
+  return apply(current_->transitionFor(detail::EventId::JOG,
                             stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::notchDetected() {
-  return apply(current_->on(detail::EventId::NOTCH,
+  return apply(current_->transitionFor(detail::EventId::NOTCH,
                             stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::notchTimedOut() {
-  return apply(current_->on(detail::EventId::NOTCH_TIMEOUT,
+  return apply(current_->transitionFor(detail::EventId::NOTCH_TIMEOUT,
                             stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::motionCompleted() {
-  return apply(current_->on(detail::EventId::MOTION_COMPLETED,
+  return apply(current_->transitionFor(detail::EventId::MOTION_COMPLETED,
                             stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::pictureTaken() {
-  return apply(current_->on(detail::EventId::PICTURE_TAKEN,
+  return apply(current_->transitionFor(detail::EventId::PICTURE_TAKEN,
                             stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::stop() {
-  return apply(current_->on(detail::EventId::STOP,
+  return apply(current_->transitionFor(detail::EventId::STOP,
                             stateView(mode_, stopRequested_)));
 }
 

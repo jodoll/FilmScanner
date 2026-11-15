@@ -77,7 +77,7 @@ struct Result {
 
 // Pure activity state machine. No clock, config, hardware or protocol types.
 namespace detail {
-class StateHandler;
+class StateNode;
 struct Transition;
 }  // namespace detail
 
@@ -110,7 +110,7 @@ class StateMachine {
  private:
   Result apply(const detail::Transition& transition);
 
-  const detail::StateHandler* current_;
+  const detail::StateNode* current_;
   Mode mode_ = Mode::NONE;
   bool stopRequested_ = false;
   ErrorCode lastError_ = ErrorCode::NONE;

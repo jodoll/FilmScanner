@@ -39,32 +39,35 @@ struct Transition {
   bool stopRequested;
 };
 
-// A state is a description: its identity and the transitions it allows.
-// Unsupported events inherit on() and answer with BUSY.
-class StateHandler {
+// A node of the transition graph: its identity and its outgoing edges. The
+// machine queries a node for the transition an event produces; an event the
+// node has no edge for inherits transitionFor() and answers with BUSY.
+class StateNode {
  public:
   State id() const { return id_; }
 
-  virtual Transition on(EventId, StateView) const { return reject(); }
+  virtual Transition transitionFor(EventId, StateView) const {
+    return noTransition();
+  }
 
  protected:
-  explicit StateHandler(State id) : id_(id) {}
+  explicit StateNode(State id) : id_(id) {}
 
-  Transition reject() const {
+  Transition noTransition() const {
     return {ErrorCode::BUSY, id_, Mode::NONE, 0, StopReason::NONE,
             ErrorAction::KEEP, false};
   }
 
-  Transition accept(State next, Mode mode, Announcement announcement,
-                    StopReason reason = StopReason::NONE,
-                    ErrorAction errorAction = ErrorAction::KEEP) const {
-    return accept(next, mode, static_cast<uint16_t>(announcement), reason,
-                  errorAction);
+  Transition accepted(State next, Mode mode, Announcement announcement,
+                      StopReason reason = StopReason::NONE,
+                      ErrorAction errorAction = ErrorAction::KEEP) const {
+    return accepted(next, mode, static_cast<uint16_t>(announcement), reason,
+                    errorAction);
   }
 
-  Transition accept(State next, Mode mode, uint16_t announcementBits,
-                    StopReason reason = StopReason::NONE,
-                    ErrorAction errorAction = ErrorAction::KEEP) const {
+  Transition accepted(State next, Mode mode, uint16_t announcementBits,
+                      StopReason reason = StopReason::NONE,
+                      ErrorAction errorAction = ErrorAction::KEEP) const {
     return {ErrorCode::NONE, next, mode, announcementBits, reason, errorAction,
             false};
   }
@@ -81,22 +84,22 @@ class StateHandler {
   }
 
   // RUN latches and finishes the frame; SINGLE stops immediately.
-  Transition stopInFrame(StateView view) const {
+  Transition stopTransition(StateView view) const {
     if (view.mode == Mode::RUN) {
       return stopAfterFrame(view.mode);
     }
     if (view.mode == Mode::SINGLE) {
-      return accept(State::IDLE, Mode::NONE, Announcement::STEP_STOPPED,
-                    StopReason::REQUEST);
+      return accepted(State::IDLE, Mode::NONE, Announcement::STEP_STOPPED,
+                      StopReason::REQUEST);
     }
-    return reject();
+    return noTransition();
   }
 
  private:
   State id_;
 };
 
-const StateHandler* stateFor(State state);
+const StateNode* stateFor(State state);
 
 }  // namespace detail
 }  // namespace scanner
