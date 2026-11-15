@@ -87,6 +87,11 @@ Result StateMachine::apply(const detail::Transition& transition) {
   }
   current_ = detail::stateFor(transition.next);
   mode_ = transition.mode;
+  // The latch only matters while a run frame is active; every arrival in
+  // IDLE ends the activity, so no stop request may leak into the next one.
+  if (transition.next == State::IDLE) {
+    stopRequested_ = false;
+  }
   return {state(), ErrorCode::NONE, transition.reason,
           transition.announcements};
 }

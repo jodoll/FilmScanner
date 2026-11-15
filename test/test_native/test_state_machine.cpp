@@ -319,6 +319,7 @@ TEST(StateMachineCamera, PictureTakenWithStopRequestedEndsTheRun) {
   ASSERT_EQ(result.state, State::IDLE);
   EXPECT_EQ(machine.state(), State::IDLE);
   EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_FALSE(machine.stopRequested());
   EXPECT_EQ(result.error, ErrorCode::NONE);
   EXPECT_EQ(result.reason, StopReason::REQUEST);
   EXPECT_EQ(result.announcements,
