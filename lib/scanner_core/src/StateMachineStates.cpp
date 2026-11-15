@@ -183,6 +183,9 @@ class JogState : public StateHandler {
     switch (event) {
       case EventId::MOTION_COMPLETED:
         return accept(State::IDLE, Mode::NONE, Announcement::JOG_DONE);
+      case EventId::STOP:
+        return accept(State::IDLE, Mode::NONE, Announcement::JOG_STOPPED,
+                      StopReason::REQUEST);
       default:
         return reject();
     }
