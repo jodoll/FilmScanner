@@ -35,9 +35,14 @@ if [ "$reset" -eq 1 ]; then
   sbx rm film-scanner
 fi
 
-sbx run docker.io/sbx/opencode:2.3.0 \
-  --name film-scanner \
-  --clone \
-  -t film-scanner-tools:v1 \
-  --kit ./.sandbox/opencode-state \
-  .
+if sbx ls | grep -q '^film-scanner'; then
+  sbx run --name film-scanner
+else
+  sbx run docker.io/sbx/opencode:2.3.0 \
+    --name film-scanner \
+    --clone \
+    -t film-scanner-tools:v1 \
+    --kit ./.sandbox/opencode-state \
+    .
+fi
+
