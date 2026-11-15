@@ -17,12 +17,15 @@ enum class EventId : uint8_t {
   MOTION_COMPLETED,
   PICTURE_TAKEN,
   STOP,
-  ABORT
+  ABORT,
+  DRIVER_FAULT
 };
 
 enum class ErrorAction : uint8_t {
-  KEEP,
-  CLEAR
+  REJECT,  // No edge for the event; transition.error is the rejection code.
+  KEEP,    // Accepted; lastError is unchanged.
+  CLEAR,   // Accepted; lastError is cleared.
+  SET      // Accepted; transition.error is stored as lastError.
 };
 
 struct StateView {
@@ -56,7 +59,7 @@ class StateNode {
 
   Transition noTransition() const {
     return {ErrorCode::BUSY, id_, Mode::NONE, 0, StopReason::NONE,
-            ErrorAction::KEEP, false};
+            ErrorAction::REJECT, false};
   }
 
   Transition accepted(State next, Mode mode, Announcement announcement,

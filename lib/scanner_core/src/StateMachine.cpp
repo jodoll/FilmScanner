@@ -70,6 +70,11 @@ Result StateMachine::abort() {
                             stateView(mode_, stopRequested_)));
 }
 
+Result StateMachine::driverFaultDetected() {
+  return apply(current_->transitionFor(detail::EventId::DRIVER_FAULT,
+                            stateView(mode_, stopRequested_)));
+}
+
 State StateMachine::state() const { return current_->id(); }
 
 Mode StateMachine::mode() const { return mode_; }
@@ -79,12 +84,14 @@ bool StateMachine::stopRequested() const { return stopRequested_; }
 ErrorCode StateMachine::lastError() const { return lastError_; }
 
 Result StateMachine::apply(const detail::Transition& transition) {
-  if (transition.error != ErrorCode::NONE) {
+  if (transition.errorAction == detail::ErrorAction::REJECT) {
     return {state(), transition.error, StopReason::NONE,
             static_cast<uint16_t>(Announcement::NONE)};
   }
 
-  if (transition.errorAction == detail::ErrorAction::CLEAR) {
+  if (transition.errorAction == detail::ErrorAction::SET) {
+    lastError_ = transition.error;
+  } else if (transition.errorAction == detail::ErrorAction::CLEAR) {
     lastError_ = ErrorCode::NONE;
   }
   if (transition.stopRequested) {

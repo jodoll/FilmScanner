@@ -76,6 +76,11 @@ Transition SeekState::transitionFor(EventId event, StateView view) const {
       return stopTransition(view);
     case EventId::ABORT:
       return abortTransition(view.mode);
+    case EventId::DRIVER_FAULT:
+      return {ErrorCode::DRIVER_FAULT, State::FAULT, Mode::NONE,
+              announcements(Announcement::RUN_STOPPED,
+                            Announcement::FAULT_RAISED),
+              StopReason::ERROR, ErrorAction::SET, false};
     default:
       return noTransition();
   }

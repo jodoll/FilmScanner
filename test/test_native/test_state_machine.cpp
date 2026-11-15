@@ -283,6 +283,22 @@ TEST(StateMachineAbort, AbortInSeekEndsTheRun) {
             static_cast<uint16_t>(Announcement::RUN_STOPPED));
 }
 
+TEST(StateMachineFault, DriverFaultInSeekEntersFault) {
+  StateMachine machine = inSeek();
+
+  const Result result = machine.driverFaultDetected();
+
+  ASSERT_EQ(result.state, State::FAULT);
+  EXPECT_EQ(machine.state(), State::FAULT);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(machine.lastError(), ErrorCode::DRIVER_FAULT);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::ERROR);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::RUN_STOPPED) |
+                static_cast<uint16_t>(Announcement::FAULT_RAISED));
+}
+
 TEST(StateMachineStopping, MotionCompletedEntersOffsetInRunMode) {
   StateMachine machine = inSeek();
   machine.notchDetected();
