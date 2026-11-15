@@ -62,6 +62,12 @@ Transition SeekState::on(EventId event, StateView view) const {
                       StopReason::NOTCH_TIMEOUT);
       }
       return reject();
+    case EventId::MOTION_COMPLETED:
+      if (view.mode == Mode::RUN) {
+        return accept(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
+                      StopReason::MOTION_TIMEOUT);
+      }
+      return reject();
     case EventId::STOP:
       return stopInRun(view);
     default:
