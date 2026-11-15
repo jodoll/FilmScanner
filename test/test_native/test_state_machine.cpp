@@ -166,6 +166,20 @@ TEST(StateMachineSeek, NotchTimeoutInRunEndsTheRun) {
             static_cast<uint16_t>(Announcement::RUN_STOPPED));
 }
 
+TEST(StateMachineSeek, NotchTimeoutInSingleFailsTheStep) {
+  StateMachine machine = inSingleSeek();
+
+  const Result result = machine.notchTimedOut();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NOTCH_TIMEOUT);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::STEP_FAILED));
+}
+
 TEST(StateMachineStopping, MotionCompletedEntersOffsetInRunMode) {
   StateMachine machine = inSeek();
   machine.notchDetected();

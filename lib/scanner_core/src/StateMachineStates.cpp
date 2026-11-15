@@ -53,11 +53,15 @@ Transition SeekState::on(EventId event, StateView view) const {
     case EventId::NOTCH:
       return accept(State::STOPPING, view.mode, Announcement::NOTCH);
     case EventId::NOTCH_TIMEOUT:
-      if (view.mode != Mode::RUN) {
-        return reject();
+      if (view.mode == Mode::RUN) {
+        return accept(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
+                      StopReason::NOTCH_TIMEOUT);
       }
-      return accept(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
-                    StopReason::NOTCH_TIMEOUT);
+      if (view.mode == Mode::SINGLE) {
+        return accept(State::IDLE, Mode::NONE, Announcement::STEP_FAILED,
+                      StopReason::NOTCH_TIMEOUT);
+      }
+      return reject();
     case EventId::STOP:
       return stopInRun(view);
     default:
