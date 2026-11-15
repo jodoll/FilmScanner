@@ -65,6 +65,11 @@ Result StateMachine::stop() {
                             stateView(mode_, stopRequested_)));
 }
 
+Result StateMachine::abort() {
+  return apply(current_->transitionFor(detail::EventId::ABORT,
+                            stateView(mode_, stopRequested_)));
+}
+
 State StateMachine::state() const { return current_->id(); }
 
 Mode StateMachine::mode() const { return mode_; }

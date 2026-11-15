@@ -16,7 +16,8 @@ enum class EventId : uint8_t {
   NOTCH_TIMEOUT,
   MOTION_COMPLETED,
   PICTURE_TAKEN,
-  STOP
+  STOP,
+  ABORT
 };
 
 enum class ErrorAction : uint8_t {

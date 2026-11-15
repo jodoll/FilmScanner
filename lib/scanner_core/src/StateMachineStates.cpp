@@ -74,6 +74,9 @@ Transition SeekState::transitionFor(EventId event, StateView view) const {
       return noTransition();
     case EventId::STOP:
       return stopTransition(view);
+    case EventId::ABORT:
+      return accepted(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
+                      StopReason::ABORT);
     default:
       return noTransition();
   }

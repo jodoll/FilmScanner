@@ -268,6 +268,21 @@ TEST(StateMachineJog, StopStopsTheJog) {
             static_cast<uint16_t>(Announcement::JOG_STOPPED));
 }
 
+TEST(StateMachineAbort, AbortInSeekEndsTheRun) {
+  StateMachine machine = inSeek();
+
+  const Result result = machine.abort();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_FALSE(machine.stopRequested());
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::ABORT);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::RUN_STOPPED));
+}
+
 TEST(StateMachineStopping, MotionCompletedEntersOffsetInRunMode) {
   StateMachine machine = inSeek();
   machine.notchDetected();
