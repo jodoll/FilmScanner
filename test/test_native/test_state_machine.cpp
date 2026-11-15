@@ -131,6 +131,24 @@ StateMachine inSingleSeek() {
   return machine;
 }
 
+StateMachine inSingleStopping() {
+  StateMachine machine = inSingleSeek();
+  machine.notchDetected();
+  return machine;
+}
+
+StateMachine inSingleOffset() {
+  StateMachine machine = inSingleStopping();
+  machine.motionCompleted();
+  return machine;
+}
+
+StateMachine inSingleCamera() {
+  StateMachine machine = inSingleOffset();
+  machine.motionCompleted();
+  return machine;
+}
+
 StateMachine inCameraSingle() {
   StateMachine machine = inSingleSeek();
   machine.notchDetected();
@@ -367,6 +385,39 @@ INSTANTIATE_TEST_SUITE_P(
                       RunFrameStopCase{"Offset", &inOffset},
                       RunFrameStopCase{"Camera", &inCameraRun}),
     [](const ::testing::TestParamInfo<RunFrameStopCase>& info) {
+      return info.param.name;
+    });
+
+struct SingleFrameStopCase {
+  const char* name;
+  StateMachine (*makeMachine)();
+};
+
+class SingleFrameStop : public ::testing::TestWithParam<SingleFrameStopCase> {};
+
+TEST_P(SingleFrameStop, StopsImmediatelyAndGoesIdle) {
+  const SingleFrameStopCase testCase = GetParam();
+  StateMachine machine = testCase.makeMachine();
+
+  const Result result = machine.stop();
+
+  ASSERT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_FALSE(machine.stopRequested());
+  EXPECT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(result.reason, StopReason::REQUEST);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::STEP_STOPPED));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllSingleFrameStates, SingleFrameStop,
+    ::testing::Values(SingleFrameStopCase{"Seek", &inSingleSeek},
+                      SingleFrameStopCase{"Stopping", &inSingleStopping},
+                      SingleFrameStopCase{"Offset", &inSingleOffset},
+                      SingleFrameStopCase{"Camera", &inSingleCamera}),
+    [](const ::testing::TestParamInfo<SingleFrameStopCase>& info) {
       return info.param.name;
     });
 

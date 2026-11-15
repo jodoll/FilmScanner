@@ -80,9 +80,14 @@ class StateHandler {
             ErrorAction::KEEP, true};
   }
 
-  Transition stopInRun(StateView view) const {
+  // RUN latches and finishes the frame; SINGLE stops immediately.
+  Transition stopInFrame(StateView view) const {
     if (view.mode == Mode::RUN) {
       return stopAfterFrame(view.mode);
+    }
+    if (view.mode == Mode::SINGLE) {
+      return accept(State::IDLE, Mode::NONE, Announcement::STEP_STOPPED,
+                    StopReason::REQUEST);
     }
     return reject();
   }

@@ -73,7 +73,7 @@ Transition SeekState::on(EventId event, StateView view) const {
       }
       return reject();
     case EventId::STOP:
-      return stopInRun(view);
+      return stopInFrame(view);
     default:
       return reject();
   }
@@ -93,7 +93,7 @@ Transition StoppingState::on(EventId event, StateView view) const {
     case EventId::MOTION_COMPLETED:
       return accept(State::OFFSET, view.mode, Announcement::NONE);
     case EventId::STOP:
-      return stopInRun(view);
+      return stopInFrame(view);
     default:
       return reject();
   }
@@ -113,7 +113,7 @@ Transition OffsetState::on(EventId event, StateView view) const {
     case EventId::MOTION_COMPLETED:
       return accept(State::CAMERA, view.mode, Announcement::FRAME_STARTED);
     case EventId::STOP:
-      return stopInRun(view);
+      return stopInFrame(view);
     default:
       return reject();
   }
@@ -141,7 +141,7 @@ Transition CameraState::on(EventId event, StateView view) const {
         return accept(State::IDLE, Mode::NONE, Announcement::SHOT_STOPPED,
                       StopReason::REQUEST);
       }
-      return stopInRun(view);
+      return stopInFrame(view);
     default:
       return reject();
   }
