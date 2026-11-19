@@ -20,7 +20,8 @@ enum class EventId : uint8_t {
   ABORT,
   DRIVER_FAULT,
   BUTTON_SHORT,
-  BUTTON_LONG
+  BUTTON_LONG,
+  BOOT_COMPLETED
 };
 
 enum class ErrorAction : uint8_t {

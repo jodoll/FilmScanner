@@ -91,6 +91,17 @@ StateMachine inIdle() {
   return machine;
 }
 
+TEST(StateMachineBoot, BootCompletedOutsideBootIsRejected) {
+  StateMachine machine = inIdle();
+
+  const Result result = machine.bootCompleted();
+
+  ASSERT_EQ(result.error, ErrorCode::BUSY);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
 StateMachine inSeek() {
   StateMachine machine;
   machine.bootCompleted();

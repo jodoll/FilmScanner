@@ -15,9 +15,8 @@ detail::StateView stateView(Mode mode, bool stopRequested) {
 StateMachine::StateMachine() : current_(detail::stateFor(State::BOOT)) {}
 
 Result StateMachine::bootCompleted() {
-  current_ = detail::stateFor(State::IDLE);
-  return {state(), ErrorCode::NONE, StopReason::NONE,
-          static_cast<uint16_t>(Announcement::NONE)};
+  return apply(current_->transitionFor(detail::EventId::BOOT_COMPLETED,
+                            stateView(mode_, stopRequested_)));
 }
 
 Result StateMachine::startContinuousRun() {

@@ -13,6 +13,8 @@ class BootState : public StateNode {
 
   Transition transitionFor(EventId event, StateView) const override {
     switch (event) {
+      case EventId::BOOT_COMPLETED:
+        return accepted(State::IDLE, Mode::NONE, Announcement::NONE);
       case EventId::DRIVER_FAULT:
         return faultTransition(Announcement::NONE, StopReason::NONE);
       default:
