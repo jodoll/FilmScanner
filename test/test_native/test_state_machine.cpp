@@ -381,6 +381,16 @@ TEST(StateMachineIdle, AbortInIdleStaysIdle) {
   EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
 }
 
+TEST(StateMachineFault, DriverFaultClearsALatchedStopRequest) {
+  StateMachine machine = inSeek();
+  machine.stop();
+
+  machine.driverFaultDetected();
+
+  EXPECT_EQ(machine.state(), State::FAULT);
+  EXPECT_FALSE(machine.stopRequested());
+}
+
 TEST(StateMachineFault, DriverFaultInSeekEntersFault) {
   StateMachine machine = inSeek();
 
