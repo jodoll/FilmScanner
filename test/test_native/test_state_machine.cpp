@@ -381,6 +381,21 @@ TEST(StateMachineIdle, AbortInIdleStaysIdle) {
   EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
 }
 
+TEST(StateMachineFault, StartContinuousRunFromFaultStartsARunAndClearsTheError) {
+  StateMachine machine = inFault();
+
+  const Result result = machine.startContinuousRun();
+
+  ASSERT_EQ(result.state, State::SEEK);
+  EXPECT_EQ(machine.state(), State::SEEK);
+  EXPECT_EQ(machine.mode(), Mode::RUN);
+  EXPECT_EQ(machine.lastError(), ErrorCode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::RUN_STARTED));
+}
+
 TEST(StateMachineFault, DriverFaultClearsALatchedStopRequest) {
   StateMachine machine = inSeek();
   machine.stop();
