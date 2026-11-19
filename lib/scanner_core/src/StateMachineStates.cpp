@@ -47,6 +47,9 @@ Transition IdleState::transitionFor(EventId event, StateView) const {
     case EventId::BUTTON_LONG:
       return accepted(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
                       StopReason::NONE, ErrorAction::CLEAR);
+    case EventId::STOP:
+    case EventId::ABORT:
+      return accepted(State::IDLE, Mode::NONE, Announcement::NONE);
     case EventId::DRIVER_FAULT:
       return faultTransition(Announcement::NONE, StopReason::NONE);
     default:

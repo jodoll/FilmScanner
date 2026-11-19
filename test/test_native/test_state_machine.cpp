@@ -355,6 +355,32 @@ TEST(StateMachineBoot, LongPressInBootIsRejected) {
   EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
 }
 
+TEST(StateMachineIdle, StopInIdleStaysIdle) {
+  StateMachine machine = inIdle();
+
+  const Result result = machine.stop();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
+TEST(StateMachineIdle, AbortInIdleStaysIdle) {
+  StateMachine machine = inIdle();
+
+  const Result result = machine.abort();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
 TEST(StateMachineFault, DriverFaultInSeekEntersFault) {
   StateMachine machine = inSeek();
 
