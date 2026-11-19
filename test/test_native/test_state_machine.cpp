@@ -305,6 +305,38 @@ TEST(StateMachineFault, DriverFaultInSeekEntersFault) {
                 static_cast<uint16_t>(Announcement::FAULT_RAISED));
 }
 
+TEST(StateMachineFault, StopFromFaultReturnsToIdleAndClearsTheError) {
+  StateMachine machine = inSeek();
+  machine.driverFaultDetected();
+
+  const Result result = machine.stop();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(machine.lastError(), ErrorCode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::NONE));
+}
+
+TEST(StateMachineFault, AbortFromFaultReturnsToIdleAndClearsTheError) {
+  StateMachine machine = inSeek();
+  machine.driverFaultDetected();
+
+  const Result result = machine.abort();
+
+  ASSERT_EQ(result.state, State::IDLE);
+  EXPECT_EQ(machine.state(), State::IDLE);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(machine.lastError(), ErrorCode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::NONE));
+}
+
 TEST(StateMachineStopping, MotionCompletedEntersOffsetInRunMode) {
   StateMachine machine = inSeek();
   machine.notchDetected();

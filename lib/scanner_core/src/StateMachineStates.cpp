@@ -238,6 +238,10 @@ Transition FaultState::transitionFor(EventId event, StateView) const {
     case EventId::START_RUN:
       return accepted(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
                       StopReason::NONE, ErrorAction::CLEAR);
+    case EventId::STOP:
+    case EventId::ABORT:
+      return accepted(State::IDLE, Mode::NONE, Announcement::NONE,
+                      StopReason::NONE, ErrorAction::CLEAR);
     default:
       return noTransition();
   }
