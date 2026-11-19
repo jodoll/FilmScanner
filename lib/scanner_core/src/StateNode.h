@@ -18,7 +18,9 @@ enum class EventId : uint8_t {
   PICTURE_TAKEN,
   STOP,
   ABORT,
-  DRIVER_FAULT
+  DRIVER_FAULT,
+  BUTTON_SHORT,
+  BUTTON_LONG
 };
 
 enum class ErrorAction : uint8_t {

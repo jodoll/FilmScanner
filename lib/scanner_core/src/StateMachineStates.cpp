@@ -43,6 +43,10 @@ Transition IdleState::transitionFor(EventId event, StateView) const {
                       StopReason::NONE, ErrorAction::CLEAR);
     case EventId::JOG:
       return accepted(State::JOG, Mode::NONE, Announcement::NONE);
+    case EventId::BUTTON_SHORT:
+    case EventId::BUTTON_LONG:
+      return accepted(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
+                      StopReason::NONE, ErrorAction::CLEAR);
     case EventId::DRIVER_FAULT:
       return faultTransition(Announcement::NONE, StopReason::NONE);
     default:
@@ -236,6 +240,10 @@ class FaultState : public StateNode {
 Transition FaultState::transitionFor(EventId event, StateView) const {
   switch (event) {
     case EventId::START_RUN:
+      return accepted(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
+                      StopReason::NONE, ErrorAction::CLEAR);
+    case EventId::BUTTON_SHORT:
+    case EventId::BUTTON_LONG:
       return accepted(State::SEEK, Mode::RUN, Announcement::RUN_STARTED,
                       StopReason::NONE, ErrorAction::CLEAR);
     case EventId::STOP:

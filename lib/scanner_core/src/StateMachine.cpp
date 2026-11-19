@@ -75,6 +75,16 @@ Result StateMachine::driverFaultDetected() {
                             stateView(mode_, stopRequested_)));
 }
 
+Result StateMachine::buttonPressedShort() {
+  return apply(current_->transitionFor(detail::EventId::BUTTON_SHORT,
+                            stateView(mode_, stopRequested_)));
+}
+
+Result StateMachine::buttonPressedLong() {
+  return apply(current_->transitionFor(detail::EventId::BUTTON_LONG,
+                            stateView(mode_, stopRequested_)));
+}
+
 State StateMachine::state() const { return current_->id(); }
 
 Mode StateMachine::mode() const { return mode_; }

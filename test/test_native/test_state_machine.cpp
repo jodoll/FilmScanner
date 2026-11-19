@@ -289,6 +289,72 @@ TEST(StateMachineAbort, AbortInSeekEndsTheRun) {
             static_cast<uint16_t>(Announcement::RUN_STOPPED));
 }
 
+StateMachine inFault() {
+  StateMachine machine = inSeek();
+  machine.driverFaultDetected();
+  return machine;
+}
+
+struct ButtonCase {
+  const char* name;
+  Result (StateMachine::*event)();
+  StateMachine (*makeMachine)();
+};
+
+class ButtonPress : public ::testing::TestWithParam<ButtonCase> {};
+
+TEST_P(ButtonPress, StartsARunAndClearsTheError) {
+  const ButtonCase testCase = GetParam();
+  StateMachine machine = testCase.makeMachine();
+
+  const Result result = (machine.*testCase.event)();
+
+  ASSERT_EQ(result.state, State::SEEK);
+  EXPECT_EQ(machine.state(), State::SEEK);
+  EXPECT_EQ(machine.mode(), Mode::RUN);
+  EXPECT_EQ(machine.lastError(), ErrorCode::NONE);
+  EXPECT_EQ(result.error, ErrorCode::NONE);
+  EXPECT_EQ(result.reason, StopReason::NONE);
+  EXPECT_EQ(result.announcements,
+            static_cast<uint16_t>(Announcement::RUN_STARTED));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    FromIdleAndFault, ButtonPress,
+    ::testing::Values(ButtonCase{"ShortFromIdle",
+                                 &StateMachine::buttonPressedShort, &inIdle},
+                      ButtonCase{"LongFromIdle",
+                                 &StateMachine::buttonPressedLong, &inIdle},
+                      ButtonCase{"ShortFromFault",
+                                 &StateMachine::buttonPressedShort, &inFault},
+                      ButtonCase{"LongFromFault",
+                                 &StateMachine::buttonPressedLong, &inFault}),
+    [](const ::testing::TestParamInfo<ButtonCase>& info) {
+      return info.param.name;
+    });
+
+TEST(StateMachineBoot, ShortPressInBootIsRejected) {
+  StateMachine machine;
+
+  const Result result = machine.buttonPressedShort();
+
+  ASSERT_EQ(result.error, ErrorCode::BUSY);
+  EXPECT_EQ(machine.state(), State::BOOT);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
+TEST(StateMachineBoot, LongPressInBootIsRejected) {
+  StateMachine machine;
+
+  const Result result = machine.buttonPressedLong();
+
+  ASSERT_EQ(result.error, ErrorCode::BUSY);
+  EXPECT_EQ(machine.state(), State::BOOT);
+  EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(result.announcements, static_cast<uint16_t>(Announcement::NONE));
+}
+
 TEST(StateMachineFault, DriverFaultInSeekEntersFault) {
   StateMachine machine = inSeek();
 
