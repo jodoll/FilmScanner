@@ -66,6 +66,15 @@ class SeekState : public StateNode {
  public:
   SeekState() : StateNode(State::SEEK) {}
   Transition transitionFor(EventId event, StateView view) const override;
+
+ private:
+  // A seek that ended without a notch stores the timeout code as lastError.
+  static Transition seekTimedOut(Announcement announcement, StopReason reason,
+                                 ErrorCode code) {
+    return {code, State::IDLE, Mode::NONE,
+            static_cast<uint16_t>(announcement), reason, ErrorAction::SET,
+            false};
+  }
 };
 
 Transition SeekState::transitionFor(EventId event, StateView view) const {
@@ -74,22 +83,24 @@ Transition SeekState::transitionFor(EventId event, StateView view) const {
       return accepted(State::STOPPING, view.mode, Announcement::NOTCH);
     case EventId::NOTCH_TIMEOUT:
       if (view.mode == Mode::RUN) {
-        return accepted(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
-                        StopReason::NOTCH_TIMEOUT);
+        return seekTimedOut(Announcement::RUN_STOPPED, StopReason::NOTCH_TIMEOUT,
+                            ErrorCode::NOTCH_TIMEOUT);
       }
       if (view.mode == Mode::SINGLE) {
-        return accepted(State::IDLE, Mode::NONE, Announcement::STEP_FAILED,
-                        StopReason::NOTCH_TIMEOUT);
+        return seekTimedOut(Announcement::STEP_FAILED, StopReason::NOTCH_TIMEOUT,
+                            ErrorCode::NOTCH_TIMEOUT);
       }
       return noTransition();
     case EventId::MOTION_COMPLETED:
       if (view.mode == Mode::RUN) {
-        return accepted(State::IDLE, Mode::NONE, Announcement::RUN_STOPPED,
-                        StopReason::MOTION_TIMEOUT);
+        return seekTimedOut(Announcement::RUN_STOPPED,
+                            StopReason::MOTION_TIMEOUT,
+                            ErrorCode::MOTION_TIMEOUT);
       }
       if (view.mode == Mode::SINGLE) {
-        return accepted(State::IDLE, Mode::NONE, Announcement::STEP_FAILED,
-                        StopReason::MOTION_TIMEOUT);
+        return seekTimedOut(Announcement::STEP_FAILED,
+                            StopReason::MOTION_TIMEOUT,
+                            ErrorCode::MOTION_TIMEOUT);
       }
       return noTransition();
     case EventId::STOP:

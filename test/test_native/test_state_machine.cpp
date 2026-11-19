@@ -195,6 +195,7 @@ TEST(StateMachineSeek, NotchTimeoutInRunEndsTheRun) {
   ASSERT_EQ(result.state, State::IDLE);
   EXPECT_EQ(machine.state(), State::IDLE);
   EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(machine.lastError(), ErrorCode::NOTCH_TIMEOUT);
   EXPECT_EQ(result.error, ErrorCode::NONE);
   EXPECT_EQ(result.reason, StopReason::NOTCH_TIMEOUT);
   EXPECT_EQ(result.announcements,
@@ -209,6 +210,7 @@ TEST(StateMachineSeek, NotchTimeoutInSingleFailsTheStep) {
   ASSERT_EQ(result.state, State::IDLE);
   EXPECT_EQ(machine.state(), State::IDLE);
   EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(machine.lastError(), ErrorCode::NOTCH_TIMEOUT);
   EXPECT_EQ(result.error, ErrorCode::NONE);
   EXPECT_EQ(result.reason, StopReason::NOTCH_TIMEOUT);
   EXPECT_EQ(result.announcements,
@@ -223,6 +225,7 @@ TEST(StateMachineSeek, SeekBudgetExhaustedInRunEndsTheRun) {
   ASSERT_EQ(result.state, State::IDLE);
   EXPECT_EQ(machine.state(), State::IDLE);
   EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(machine.lastError(), ErrorCode::MOTION_TIMEOUT);
   EXPECT_EQ(result.error, ErrorCode::NONE);
   EXPECT_EQ(result.reason, StopReason::MOTION_TIMEOUT);
   EXPECT_EQ(result.announcements,
@@ -237,6 +240,7 @@ TEST(StateMachineSeek, SeekBudgetExhaustedInSingleFailsTheStep) {
   ASSERT_EQ(result.state, State::IDLE);
   EXPECT_EQ(machine.state(), State::IDLE);
   EXPECT_EQ(machine.mode(), Mode::NONE);
+  EXPECT_EQ(machine.lastError(), ErrorCode::MOTION_TIMEOUT);
   EXPECT_EQ(result.error, ErrorCode::NONE);
   EXPECT_EQ(result.reason, StopReason::MOTION_TIMEOUT);
   EXPECT_EQ(result.announcements,
